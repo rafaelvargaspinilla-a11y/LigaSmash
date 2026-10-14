@@ -1,0 +1,999 @@
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
+import { useLiveQuery } from "dexie-react-hooks";
+import {
+  Trophy,
+  Plus,
+  BarChart3,
+  Users,
+  History,
+  Settings,
+  Star,
+  X,
+  Download,
+  Upload,
+  Trash2,
+  Swords,
+  Check,
+  ArrowUpRight,
+  Undo2,
+  Search,
+} from "lucide-react";
+import { db } from "./db";
+import { fighters, fighterById, normalize } from "./characters";
+import {
+  filterPeriod,
+  localDate,
+  periods,
+  periodBounds,
+  statistics,
+  type Win,
+  type Period,
+} from "./model";
+import {
+  Modal,
+  PlayersForm,
+  WinForm,
+  PeriodFilter,
+  Evolution,
+  Empty,
+  WinRow,
+  CharacterStat,
+} from "./components";
+import { colors, nameOf, indexOf, dateLabel, errorText } from "./ui";
+import SharedSettings from "./SharedSettings";
+import {
+  subscribeSync,
+  getSyncStatus,
+  restoreConnection,
+  synchronize,
+} from "./sync";
+type Page = "home" | "stats" | "characters" | "history";
+export default function App() {
+  const syncState = useSyncExternalStore(subscribeSync, getSyncStatus);
+  useEffect(() => {
+    void restoreConnection();
+    const timer = setInterval(() => void synchronize(), 5000);
+    const refresh = () => void synchronize();
+    window.addEventListener("online", refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("online", refresh);
+      window.removeEventListener("focus", refresh);
+    };
+  }, []);
+  useEffect(() => {
+    setLastSaved(undefined);
+    setEditing(undefined);
+    setShowWin(false);
+  }, [syncState.databaseName]);
+  const data = useLiveQuery(
+    async () =>
+      db.transaction("r", db.players, db.wins, db.preferences, async () => ({
+        databaseName: db.name,
+        players: await db.players.toArray(),
+        wins: await db.wins.toArray(),
+        favorites: (await db.preferences.get("main"))?.favorites ?? [],
+      })),
+    [syncState.databaseName],
+  );
+  const [dbError, setDbError] = useState("");
+  useEffect(() => {
+    db.open().catch((e) => setDbError(errorText(e)));
+  }, []);
+  const [page, setPage] = useState<Page>("home");
+  const [period, setPeriod] = useState<Period>("all");
+  const [custom, setCustom] = useState<[string, string]>([
+    localDate(new Date()),
+    localDate(new Date()),
+  ]);
+  const [showWin, setShowWin] = useState(false);
+  const [editing, setEditing] = useState<Win>();
+  const [settings, setSettings] = useState(false);
+  const [deleting, setDeleting] = useState<Win>();
+  const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
+  const [lastSaved, setLastSaved] = useState<string>();
+  const [undoBusy, setUndoBusy] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [importBusy, setImportBusy] = useState(false);
+  const [characterQuery, setCharacterQuery] = useState("");
+  const [historyPlayer, setHistoryPlayer] = useState("");
+  const [historyCharacter, setHistoryCharacter] = useState("");
+  const [historyLimit, setHistoryLimit] = useState(50);
+  const [pendingImport, setPendingImport] = useState<unknown>();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const players = data?.players ?? [];
+  const wins = data?.wins ?? [];
+  const favorites = data?.favorites ?? [];
+  const [today, setToday] = useState(localDate(new Date()));
+  useEffect(() => {
+    const refresh = () => setToday(localDate(new Date()));
+    const timer = setInterval(refresh, 30000);
+    window.addEventListener("focus", refresh);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+    };
+  }, []);
+  const filtered = useMemo(
+    () => filterPeriod(wins, periodBounds(period, new Date(), custom)),
+    [wins, period, custom, today],
+  );
+  const stats = useMemo(
+    () => statistics(filtered, players),
+    [filtered, players],
+  );
+  const allStats = useMemo(() => statistics(wins, players), [wins, players]);
+  const latest = useMemo(
+    () =>
+      [...wins].sort(
+        (a, b) =>
+          b.timestamp.localeCompare(a.timestamp) || b.id.localeCompare(a.id),
+      ),
+    [wins],
+  );
+  const history = useMemo(
+    () =>
+      [...filtered]
+        .filter(
+          (w) =>
+            (!historyPlayer || w.playerId === historyPlayer) &&
+            (!historyCharacter || w.characterId === historyCharacter),
+        )
+        .sort(
+          (a, b) =>
+            b.timestamp.localeCompare(a.timestamp) || b.id.localeCompare(a.id),
+        ),
+    [filtered, historyPlayer, historyCharacter],
+  );
+  useEffect(
+    () => setHistoryLimit(50),
+    [period, custom, historyPlayer, historyCharacter],
+  );
+  useEffect(() => {
+    if (notice) {
+      const id = setTimeout(() => setNotice(""), 7000);
+      return () => clearTimeout(id);
+    }
+  }, [notice]);
+  const notify = (message: string) => {
+    void synchronize();
+    setError("");
+    setNotice(message);
+  };
+  const save = (w: Win) => {
+    if (!editing) setLastSaved(w.id);
+    setShowWin(false);
+    setEditing(undefined);
+    notify(
+      editing
+        ? "Partida actualizada"
+        : "¡Victoria registrada! El ranking ya está actualizado.",
+    );
+  };
+  async function undo() {
+    if (!lastSaved || undoBusy) return;
+    setUndoBusy(true);
+    try {
+      await db.deleteWin(lastSaved);
+      setLastSaved(undefined);
+      notify("Última victoria deshecha.");
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setUndoBusy(false);
+    }
+  }
+  async function exportData() {
+    try {
+      const backup = await db.exportBackup();
+      const url = URL.createObjectURL(
+        new Blob([JSON.stringify(backup, null, 2)], {
+          type: "application/json",
+        }),
+      );
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `smash-tracker-${localDate(new Date())}.json`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      notify("Copia de seguridad exportada.");
+    } catch (e) {
+      setError(errorText(e));
+    }
+  }
+  async function importData() {
+    if (importBusy) return;
+    setImportBusy(true);
+    try {
+      const result = await db.importBackup(pendingImport);
+      setPendingImport(undefined);
+      notify(
+        `Importación completa: ${result.added} nuevas, ${result.duplicates} duplicadas omitidas.`,
+      );
+    } catch (e) {
+      setError(errorText(e));
+      setPendingImport(undefined);
+    } finally {
+      setImportBusy(false);
+    }
+  }
+  async function toggleFavorite(id: string) {
+    try {
+      await db.transaction("rw", db.preferences, async () => {
+        const current = (await db.preferences.get("main"))?.favorites ?? [];
+        await db.preferences.put({
+          id: "main",
+          favorites: current.includes(id)
+            ? current.filter((f) => f !== id)
+            : [...current, id],
+        });
+      });
+    } catch (e) {
+      setError(errorText(e));
+    }
+  }
+  const navigation: [Page, string, typeof Trophy][] = [
+    ["home", "Inicio", Trophy],
+    ["stats", "Estadísticas", BarChart3],
+    ["characters", "Personajes", Users],
+    ["history", "Historial", History],
+  ];
+  if (dbError)
+    return (
+      <main className="onboarding">
+        <h1>No podemos abrir tus datos</h1>
+        <p role="alert">{dbError}</p>
+        <p>
+          Comprueba que el navegador permite el almacenamiento del sitio. No se
+          han borrado tus partidas.
+        </p>
+        <button className="primary" onClick={() => location.reload()}>
+          Reintentar
+        </button>
+      </main>
+    );
+  if (!data || data.databaseName !== syncState.databaseName)
+    return (
+      <main className="onboarding">
+        <h1>Smash Tracker</h1>
+        <p>Cargando tus partidas…</p>
+      </main>
+    );
+  return (
+    <>
+      <aside className="sidebar">
+        <a
+          className="brand"
+          href="#"
+          onClick={(e) => {
+            e.preventDefault();
+            setPage("home");
+          }}
+        >
+          <span className="brand-mark">
+            <Swords size={25} />
+          </span>
+          <span>
+            SMASH<small>TRACKER</small>
+          </span>
+        </a>
+        <div className="nav-label">TU ARENA</div>
+        <nav>
+          {navigation.map(([id, label, Icon]) => (
+            <button
+              key={id}
+              className={page === id ? "active" : ""}
+              aria-current={page === id ? "page" : undefined}
+              onClick={() => setPage(id)}
+            >
+              <Icon size={20} />
+              {label}
+              {page === id && <span className="nav-dot" />}
+            </button>
+          ))}
+        </nav>
+        <div className="sidebar-bottom">
+          <div className="local-badge">
+            <span />
+            {syncState.connected
+              ? syncState.pending
+                ? "Cambios pendientes"
+                : "Grupo compartido"
+              : "Guardado en este dispositivo"}
+          </div>
+          <button onClick={() => setSettings(true)}>
+            <Settings size={19} />
+            Ajustes
+          </button>
+          <p>Sin cuentas. Solo partidas.</p>
+        </div>
+      </aside>
+      <div className="app-shell">
+        <header className="topbar">
+          <span className="topbar-label">SUPER SMASH BROS. ULTIMATE</span>
+          <div>
+            <span className="offline-pill">
+              <span />{" "}
+              {syncState.connected ? "GRUPO COMPARTIDO" : "LOCAL & OFFLINE"}
+            </span>
+            <button
+              className="icon-button"
+              aria-label="Abrir ajustes"
+              onClick={() => setSettings(true)}
+            >
+              <Settings size={20} />
+            </button>
+          </div>
+        </header>
+        <main>
+          <div className="page-heading">
+            <div>
+              <p className="eyebrow">
+                {page === "home"
+                  ? "CADA PARTIDA CUENTA"
+                  : "TU GRUPO, EN NÚMEROS"}
+              </p>
+              <h1>
+                {
+                  {
+                    home: "Vuestra arena.",
+                    stats: "Las estadísticas.",
+                    characters: "El plantel.",
+                    history: "El historial.",
+                  }[page]
+                }
+              </h1>
+              <p className="muted">
+                {
+                  {
+                    home: "Tres jugadores. Un ganador. Una rivalidad que no termina.",
+                    stats: "Descubre quién domina y cómo cambia la partida.",
+                    characters: "Los luchadores que os llevan a la victoria.",
+                    history:
+                      "Cada victoria tiene su historia. Aquí están todas.",
+                  }[page]
+                }
+              </p>
+            </div>
+            <button
+              className="primary"
+              onClick={() => setShowWin(true)}
+              disabled={players.length !== 3}
+            >
+              <Plus size={20} />
+              Registrar victoria
+            </button>
+          </div>
+          {page !== "home" && (
+            <div className="filter-bar">
+              <span className="section-label">CONSULTAR PERIODO</span>
+              <PeriodFilter
+                period={period}
+                setPeriod={setPeriod}
+                custom={custom}
+                setCustom={setCustom}
+              />
+            </div>
+          )}
+          {(page === "home" || page === "stats") && (
+            <>
+              <div className="summary-grid">
+                <section className="summary-card">
+                  <div className="summary-icon">
+                    <Swords size={21} />
+                  </div>
+                  <span>
+                    Partidas {page === "home" ? "registradas" : "del periodo"}
+                  </span>
+                  <strong>
+                    {(page === "home" ? allStats : stats).total.toLocaleString(
+                      "es",
+                    )}
+                  </strong>
+                  <small>Siempre entre los tres jugadores</small>
+                </section>
+                <section className="summary-card leader-card">
+                  <div className="summary-icon gold">
+                    <Trophy size={21} />
+                  </div>
+                  <span>
+                    {(page === "home" ? allStats : stats).leaders.length > 1
+                      ? "Liderato compartido"
+                      : "Líder actual"}
+                  </span>
+                  <strong className="text-value">
+                    {(page === "home" ? allStats : stats).leaders
+                      .map((p) => p.name)
+                      .join(" · ") || "Por decidir"}
+                  </strong>
+                  <small>
+                    {(page === "home" ? allStats : stats).leaders.length
+                      ? "La cima del ranking"
+                      : "La primera victoria puede ser tuya"}
+                  </small>
+                </section>
+                <section className="summary-card">
+                  <div className="summary-icon gold">
+                    <Star size={21} />
+                  </div>
+                  <span>
+                    {page === "home" ? "Luchador más ganador" : "Racha máxima"}
+                  </span>
+                  <strong className={page === "home" ? "text-value" : ""}>
+                    {page === "home"
+                      ? allStats.topCharacters
+                          .map(([id]) => fighterById.get(id)?.name)
+                          .join(" · ") || "Por descubrir"
+                      : stats.maxStreak}
+                  </strong>
+                  <small>
+                    {page === "home"
+                      ? "Por victorias registradas"
+                      : "Victorias consecutivas en el periodo"}
+                  </small>
+                </section>
+              </div>
+              <div className="section-heading">
+                <div>
+                  <p className="eyebrow">
+                    {page === "home"
+                      ? "LA RIVALIDAD"
+                      : "EL PERIODO SELECCIONADO"}
+                  </p>
+                  <h2>Ranking de jugadores</h2>
+                </div>
+                <span className="tag">
+                  {page === "home"
+                    ? "HISTÓRICO"
+                    : periods[period].toUpperCase()}
+                </span>
+              </div>
+              <div className="ranking-grid">
+                {(page === "home" ? allStats : stats).ranking.map(
+                  (p, _index, arr) => {
+                    const rank = arr.filter((x) => x.wins > p.wins).length + 1;
+                    const leader = p.wins > 0 && rank === 1;
+                    return (
+                      <section
+                        key={p.id}
+                        className={`ranking-card ${leader ? "is-leader" : ""}`}
+                        style={
+                          {
+                            "--player-color": colors[indexOf(p.id)],
+                          } as React.CSSProperties
+                        }
+                      >
+                        <div className="ranking-top">
+                          <span className="rank-number">0{rank}</span>
+                          {leader ? (
+                            <span className="leader-tag">
+                              <Trophy size={12} />
+                              {arr.filter((x) => x.wins === p.wins).length > 1
+                                ? "EMPATE"
+                                : "LÍDER"}
+                            </span>
+                          ) : (
+                            <span className="tag">
+                              JUGADOR {indexOf(p.id) + 1}
+                            </span>
+                          )}
+                        </div>
+                        <div className="player-identity">
+                          <span className="avatar">
+                            {p.name.slice(0, 1).toUpperCase()}
+                          </span>
+                          <h3>{p.name}</h3>
+                        </div>
+                        <div className="player-numbers">
+                          <div>
+                            <strong>{p.wins.toLocaleString("es")}</strong>
+                            <span>victorias</span>
+                          </div>
+                          <div>
+                            <strong>
+                              {p.percent.toLocaleString("es", {
+                                maximumFractionDigits: 1,
+                              })}
+                              <small>%</small>
+                            </strong>
+                            <span>de las partidas</span>
+                          </div>
+                        </div>
+                        <div className="progress-track">
+                          <div style={{ width: `${p.percent}%` }} />
+                        </div>
+                        <div className="card-foot">
+                          <span>Mejor racha</span>
+                          <strong>{p.streak} seguidas</strong>
+                        </div>
+                      </section>
+                    );
+                  },
+                )}
+              </div>
+              {page === "stats" && (
+                <>
+                  <Evolution wins={filtered} players={players} />
+                  <section className="panel">
+                    <div className="section-heading">
+                      <h2>Luchadores del periodo</h2>
+                      <span className="muted">Victorias, no tasa de éxito</span>
+                    </div>
+                    {stats.total ? (
+                      <div className="character-stats-grid">
+                        {stats.characterRanking.map(([id, count]) => (
+                          <CharacterStat
+                            key={id}
+                            id={id}
+                            count={count}
+                            wins={filtered}
+                            players={players}
+                            favorite={favorites.includes(id)}
+                            onFavorite={() => toggleFavorite(id)}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <Empty text="No hay partidas en este periodo. Prueba otro filtro." />
+                    )}
+                  </section>
+                </>
+              )}
+              {page === "home" && (
+                <div className="home-bottom">
+                  <section className="panel">
+                    <div className="section-heading">
+                      <h2>Últimas victorias</h2>
+                      <button
+                        className="text-button"
+                        onClick={() => setPage("history")}
+                      >
+                        Ver todas
+                        <ArrowUpRight size={16} />
+                      </button>
+                    </div>
+                    {latest.length ? (
+                      latest
+                        .slice(0, 5)
+                        .map((w) => (
+                          <WinRow
+                            key={w.id}
+                            win={w}
+                            players={players}
+                            onEdit={setEditing}
+                            onDelete={setDeleting}
+                          />
+                        ))
+                    ) : (
+                      <Empty text="La arena está lista. Registra vuestra primera victoria." />
+                    )}
+                  </section>
+                  <section className="arena-callout">
+                    <span className="eyebrow">QUE EMPIECE LA PARTIDA</span>
+                    <Swords size={52} strokeWidth={1.2} />
+                    <h2>
+                      Una más.
+                      <br />Y esta la gano yo.
+                    </h2>
+                    <p>
+                      Elige ganador y luchador.
+                      <br />
+                      Nosotros llevamos la cuenta.
+                    </p>
+                    <button
+                      className="primary"
+                      onClick={() => setShowWin(true)}
+                      disabled={players.length !== 3}
+                    >
+                      <Plus size={18} />
+                      Nueva victoria
+                    </button>
+                  </section>
+                </div>
+              )}
+            </>
+          )}
+          {page === "characters" && (
+            <>
+              <div className="panel favorites-panel">
+                <h2>El favorito de cada jugador</h2>
+                <p className="muted">
+                  Su luchador con más victorias. Los empates se muestran juntos.
+                </p>
+                <div className="favorite-players">
+                  {players.map((p) => {
+                    const s = statistics(
+                      filtered.filter((w) => w.playerId === p.id),
+                      [p],
+                    );
+                    return (
+                      <div key={p.id}>
+                        <span
+                          className="color-dot"
+                          style={{ background: colors[indexOf(p.id)] }}
+                        />
+                        <strong>{p.name}</strong>
+                        <p>
+                          {s.topCharacters
+                            .map(([id]) => fighterById.get(id)?.name)
+                            .join(" · ") || "Todavía sin victorias"}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="section-heading">
+                <h2>Ranking de luchadores</h2>
+                <label className="search">
+                  <Search size={17} />
+                  <input
+                    placeholder="Buscar luchador"
+                    aria-label="Buscar en estadísticas de personajes"
+                    value={characterQuery}
+                    onChange={(e) => setCharacterQuery(e.target.value)}
+                  />
+                </label>
+              </div>
+              <p className="muted small-note">
+                Solo conocemos el luchador ganador: estos porcentajes son su
+                aportación a las victorias de cada jugador.
+              </p>
+              <div className="character-stats-grid">
+                {[...fighters]
+                  .filter((f) =>
+                    normalize(f.name).includes(normalize(characterQuery)),
+                  )
+                  .sort(
+                    (a, b) =>
+                      (stats.characterRanking.find(
+                        ([id]) => id === b.id,
+                      )?.[1] ?? 0) -
+                      (stats.characterRanking.find(
+                        ([id]) => id === a.id,
+                      )?.[1] ?? 0),
+                  )
+                  .map((f) => (
+                    <CharacterStat
+                      key={f.id}
+                      id={f.id}
+                      count={
+                        stats.characterRanking.find(
+                          ([id]) => id === f.id,
+                        )?.[1] ?? 0
+                      }
+                      wins={filtered}
+                      players={players}
+                      favorite={favorites.includes(f.id)}
+                      onFavorite={() => toggleFavorite(f.id)}
+                    />
+                  ))}
+              </div>
+              {!fighters.some((f) =>
+                normalize(f.name).includes(normalize(characterQuery)),
+              ) && <Empty text="No se ha encontrado ese luchador." />}
+            </>
+          )}
+          {page === "history" && (
+            <>
+              <div className="history-filters">
+                <label>
+                  Ganador
+                  <select
+                    value={historyPlayer}
+                    onChange={(e) => setHistoryPlayer(e.target.value)}
+                  >
+                    <option value="">Todos los jugadores</option>
+                    {players.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Luchador
+                  <select
+                    value={historyCharacter}
+                    onChange={(e) => setHistoryCharacter(e.target.value)}
+                  >
+                    <option value="">Todos los luchadores</option>
+                    {fighters.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <span className="muted">{history.length} partidas</span>
+              </div>
+              <section className="panel history-panel">
+                {history.length ? (
+                  history
+                    .slice(0, historyLimit)
+                    .map((w) => (
+                      <WinRow
+                        key={w.id}
+                        win={w}
+                        players={players}
+                        onEdit={setEditing}
+                        onDelete={setDeleting}
+                      />
+                    ))
+                ) : (
+                  <Empty text="No hay partidas que coincidan con estos filtros." />
+                )}
+                {history.length > historyLimit && (
+                  <button
+                    className="secondary full"
+                    onClick={() => setHistoryLimit((n) => n + 50)}
+                  >
+                    Mostrar 50 más ({history.length - historyLimit} pendientes)
+                  </button>
+                )}
+              </section>
+            </>
+          )}
+          <footer className="page-footer">
+            <span>SMASH TRACKER</span>
+            <span>
+              {syncState.connected
+                ? "Grupo compartido · " + syncState.message
+                : "Modo local. Conecta un grupo en Ajustes para compartir partidas."}
+            </span>
+          </footer>
+        </main>
+      </div>
+      <nav className="mobile-nav" aria-label="Navegación principal">
+        {navigation.map(([id, label, Icon]) => (
+          <button
+            key={id}
+            className={page === id ? "active" : ""}
+            aria-current={page === id ? "page" : undefined}
+            onClick={() => setPage(id)}
+          >
+            <Icon size={21} />
+            <span>{label}</span>
+          </button>
+        ))}
+      </nav>
+      {players.length !== 3 && pendingImport === undefined && (
+        <Modal
+          title="Bienvenidos a vuestra arena"
+          dismissible={false}
+          onClose={() => {}}
+        >
+          <PlayersForm
+            players={players}
+            onSaved={() =>
+              notify("Jugadores listos. ¡Que empiece la rivalidad!")
+            }
+            onError={setError}
+          />
+          <p className="muted small-note">¿Ya tienes una copia?</p>
+          <button
+            className="secondary full"
+            onClick={() => fileRef.current?.click()}
+          >
+            <Upload size={17} />
+            Importar copia de seguridad
+          </button>
+          <SharedSettings
+            allowCreate={false}
+            onError={setError}
+            onNotice={notify}
+          />
+        </Modal>
+      )}
+      {(showWin || editing) && players.length === 3 && (
+        <WinForm
+          players={players}
+          wins={wins}
+          favorites={favorites}
+          editing={editing}
+          onSaved={save}
+          onClose={() => {
+            setShowWin(false);
+            setEditing(undefined);
+          }}
+          onError={setError}
+        />
+      )}
+      {settings && pendingImport === undefined && (
+        <Modal title="Ajustes de la arena" onClose={() => setSettings(false)}>
+          <h3>Los tres jugadores</h3>
+          <PlayersForm
+            players={players}
+            onSaved={() =>
+              notify("Nombres actualizados sin perder estadísticas.")
+            }
+            onError={setError}
+          />
+          <SharedSettings onError={setError} onNotice={notify} />
+          <div className="settings-section">
+            <h3>Tus datos, bajo tu control</h3>
+            <p className="muted">
+              {syncState.connected
+                ? "Las partidas de este grupo se sincronizan cada pocos segundos con Supabase. Sin conexión, los cambios quedan pendientes en este dispositivo. Conserva el código del grupo para volver a entrar."
+                : "Tus partidas se guardan en este navegador. Para compartirlas, conecta un grupo arriba."}{" "}
+              Exporta una copia periódicamente.
+            </p>
+            <div className="button-row">
+              <button className="secondary" onClick={exportData}>
+                <Download size={18} />
+                Exportar JSON
+              </button>
+              <button
+                className="secondary"
+                onClick={() => fileRef.current?.click()}
+              >
+                <Upload size={18} />
+                Importar JSON
+              </button>
+            </div>
+            <p className="small-note muted">
+              La importación fusiona registros por ID y conserva los nombres
+              actuales. Úsala solo para el mismo grupo de tres jugadores.
+            </p>
+          </div>
+          <div className="settings-section">
+            <h3>Instalar en el móvil</h3>
+            <p className="muted">
+              En Safari: Compartir → Añadir a pantalla de inicio. En Android:
+              menú del navegador → Instalar aplicación. Abre primero la
+              aplicación con conexión para disponer de ella sin conexión.
+            </p>
+          </div>
+          <div className="settings-section">
+            <h3>Retratos de luchadores</h3>
+            <p className="muted">
+              Esta versión incluye el plantel completo y espacios para retratos.
+              Consulta README y public/characters/README.md para incorporar
+              imágenes autorizadas. No se utilizan imágenes inventadas.
+            </p>
+          </div>
+        </Modal>
+      )}
+      {deleting && (
+        <Modal
+          title="¿Eliminar esta partida?"
+          onClose={() => {
+            if (!deleteBusy) setDeleting(undefined);
+          }}
+        >
+          <p>
+            La victoria de <strong>{nameOf(players, deleting.playerId)}</strong>{" "}
+            con {fighterById.get(deleting.characterId)?.name} del{" "}
+            {dateLabel(deleting.localDate)} se eliminará de todas las
+            estadísticas.
+          </p>
+          <div className="button-row">
+            <button
+              className="secondary"
+              disabled={deleteBusy}
+              onClick={() => setDeleting(undefined)}
+            >
+              Cancelar
+            </button>
+            <button
+              className="primary"
+              disabled={deleteBusy}
+              onClick={async () => {
+                setDeleteBusy(true);
+                try {
+                  await db.deleteWin(deleting.id);
+                  if (lastSaved === deleting.id) setLastSaved(undefined);
+                  setDeleting(undefined);
+                  notify("Partida eliminada.");
+                } catch (e) {
+                  setError(errorText(e));
+                } finally {
+                  setDeleteBusy(false);
+                }
+              }}
+            >
+              <Trash2 size={18} />
+              {deleteBusy ? "Eliminando…" : "Eliminar partida"}
+            </button>
+          </div>
+        </Modal>
+      )}
+      {pendingImport !== undefined && (
+        <Modal
+          title="Importar copia de seguridad"
+          onClose={() => {
+            if (!importBusy) setPendingImport(undefined);
+          }}
+        >
+          <p>
+            Se añadirán las partidas nuevas y se omitirán los IDs ya existentes.
+            Si un ID tiene datos distintos, se cancelará toda la importación.
+            Los nombres actuales se conservarán.
+          </p>
+          <p className="muted">
+            Confirma que esta copia corresponde al mismo grupo de tres
+            jugadores.
+          </p>
+          <div className="button-row">
+            <button
+              className="secondary"
+              disabled={importBusy}
+              onClick={() => setPendingImport(undefined)}
+            >
+              Cancelar
+            </button>
+            <button
+              className="primary"
+              disabled={importBusy}
+              onClick={importData}
+            >
+              {importBusy ? "Importando…" : "Importar partidas"}
+            </button>
+          </div>
+        </Modal>
+      )}
+      <input
+        className="sr-only"
+        ref={fileRef}
+        type="file"
+        accept=".json,application/json"
+        aria-label="Archivo de copia de seguridad"
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (!file) return;
+          try {
+            if (file.size > 30 * 1024 * 1024)
+              throw new Error("La copia supera el límite de 30 MB.");
+            const parsed: unknown = JSON.parse(await file.text());
+            setPendingImport(parsed);
+          } catch (e) {
+            setError(errorText(e));
+          }
+        }}
+      />
+      {(notice || lastSaved) && !error && (
+        <div className="toast" role="status">
+          <Check size={20} />
+          <span>{notice || "Última victoria guardada"}</span>
+          {lastSaved && (
+            <button disabled={undoBusy} onClick={undo}>
+              <Undo2 size={16} />
+              Deshacer
+            </button>
+          )}
+          <button
+            className="icon-button"
+            aria-label="Cerrar aviso"
+            onClick={() => {
+              setNotice("");
+              setLastSaved(undefined);
+            }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+      {error && (
+        <div className="toast error-toast" role="alert">
+          <span>{error}</span>
+          <button
+            className="icon-button"
+            aria-label="Cerrar error"
+            onClick={() => setError("")}
+          >
+            <X size={18} />
+          </button>
+        </div>
+      )}
+    </>
+  );
+}
