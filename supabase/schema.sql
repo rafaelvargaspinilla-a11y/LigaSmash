@@ -21,7 +21,7 @@ create or replace function public.smash_valid_data(payload jsonb)
 returns boolean language plpgsql immutable set search_path = pg_catalog as $$
 declare item jsonb; allowed text[] := ARRAY['01','02','03','04','04e','05','06','07','08','09','10','11','12','13','13e','14','15','16','17','18','19','20','21','21e','22','23','24','25','25e','26','27','28','28e','29','30','31','32','33-35','36','37','38','39','40','41','42','43','44','45','46','47','48','49','50','51','52','53','54','55','56','57','58','59','60','60e','61','62','63','64','65','66','66e','67','68','69','70','71','72','73','74','75','76','77','78','79-80','81','82'];
 begin
-  if jsonb_typeof(payload) <> 'object' or payload->'schemaVersion' is distinct from '1'::jsonb then return false; end if;
+  if jsonb_typeof(payload) <> 'object' or (payload->'schemaVersion' is distinct from '1'::jsonb and payload->'schemaVersion' is distinct from '2'::jsonb) then return false; end if;
   if jsonb_typeof(payload->'players') is distinct from 'array' or jsonb_typeof(payload->'wins') is distinct from 'array' or jsonb_typeof(payload->'favorites') is distinct from 'array' then return false; end if;
   if jsonb_array_length(payload->'players') <> 3 or jsonb_array_length(payload->'favorites') <> 0 or octet_length(payload::text) > 20971520 then return false; end if;
   if (select count(distinct p->>'id') from jsonb_array_elements(payload->'players') p) <> 3 then return false; end if;
@@ -37,6 +37,13 @@ begin
     if to_char((item->>'timestamp')::timestamptz at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') <> item->>'timestamp' then return false; end if;
     if jsonb_typeof(item->'localDate') is distinct from 'string' or not (item->>'localDate' ~ '^\d{4}-\d{2}-\d{2}$') or item->>'localDate' < '1900-01-01' then return false; end if;
     if ((item->>'localDate')::date)::text <> item->>'localDate' then return false; end if;
+    if item ? 'placements' then
+      if payload->'schemaVersion' <> '2'::jsonb or jsonb_typeof(item->'placements') is distinct from 'array' then return false; end if;
+      if jsonb_array_length(item->'placements')<>3 or item->'placements'->>0 is distinct from item->>'playerId' then return false; end if;
+      if (select count(distinct value) from jsonb_array_elements_text(item->'placements'))<>3 then return false; end if;
+      if exists(select 1 from jsonb_array_elements_text(item->'placements') p where p.value not in ('p1','p2','p3')) then return false; end if;
+      if exists(select 1 from jsonb_array_elements(item->'placements') p where jsonb_typeof(p.value)<>'string') then return false; end if;
+    end if;
   end loop;
   return true;
 exception when others then return false;
@@ -72,6 +79,7 @@ begin
   if exists(select 1 from public.smash_commits c where c.code_hash=current_group.code_hash and c.batch_id=smash_write_group.batch_id) then
     accepted := true;
   elsif current_group.revision=expected_revision then
+    if current_group.data->'schemaVersion'='2'::jsonb and new_data->'schemaVersion'='1'::jsonb then raise exception 'Client update required'; end if;
     update public.smash_groups set data=new_data,revision=revision+1,updated_at=now() where code_hash=current_group.code_hash returning * into current_group;
     insert into public.smash_commits(code_hash,batch_id) values(current_group.code_hash,batch_id);
     accepted := true;
