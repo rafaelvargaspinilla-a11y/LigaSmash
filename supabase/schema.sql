@@ -21,7 +21,7 @@ create or replace function public.smash_valid_data(payload jsonb)
 returns boolean language plpgsql immutable set search_path = pg_catalog as $$
 declare item jsonb; allowed text[] := ARRAY['01','02','03','04','04e','05','06','07','08','09','10','11','12','13','13e','14','15','16','17','18','19','20','21','21e','22','23','24','25','25e','26','27','28','28e','29','30','31','32','33-35','36','37','38','39','40','41','42','43','44','45','46','47','48','49','50','51','52','53','54','55','56','57','58','59','60','60e','61','62','63','64','65','66','66e','67','68','69','70','71','72','73','74','75','76','77','78','79-80','81','82'];
 begin
-  if jsonb_typeof(payload) <> 'object' or (payload->'schemaVersion' is distinct from '1'::jsonb and payload->'schemaVersion' is distinct from '2'::jsonb and payload->'schemaVersion' is distinct from '3'::jsonb) then return false; end if;
+  if jsonb_typeof(payload) <> 'object' or (payload->'schemaVersion' is distinct from '1'::jsonb and payload->'schemaVersion' is distinct from '2'::jsonb and payload->'schemaVersion' is distinct from '3'::jsonb and payload->'schemaVersion' is distinct from '4'::jsonb) then return false; end if;
   if jsonb_typeof(payload->'players') is distinct from 'array' or jsonb_typeof(payload->'wins') is distinct from 'array' or jsonb_typeof(payload->'favorites') is distinct from 'array' then return false; end if;
   if jsonb_array_length(payload->'players') <> 3 or jsonb_array_length(payload->'favorites') <> 0 or octet_length(payload::text) > 20971520 then return false; end if;
   if (select count(distinct p->>'id') from jsonb_array_elements(payload->'players') p) <> 3 then return false; end if;
@@ -32,14 +32,14 @@ begin
   end loop;
   if (select count(distinct w->>'id') from jsonb_array_elements(payload->'wins') w) <> jsonb_array_length(payload->'wins') then return false; end if;
   for item in select value from jsonb_array_elements(payload->'wins') loop
-    if jsonb_typeof(item) <> 'object' or jsonb_typeof(item->'id') is distinct from 'string' or length(item->>'id') not between 1 and 100 or (item->>'playerId'=any(array['p1','p2','p3'])) is distinct from true or (case when item->>'league'='duel' then item->'characterId'='""'::jsonb else (item->>'characterId'=any(allowed)) end) is distinct from true then return false; end if;
+    if jsonb_typeof(item) <> 'object' or jsonb_typeof(item->'id') is distinct from 'string' or length(item->>'id') not between 1 and 100 or (item->>'playerId'=any(array['p1','p2','p3'])) is distinct from true or (case when item->>'league'='duel' then ((item->'characterId'='""'::jsonb and not (item ? 'opponentCharacterId')) or (payload->'schemaVersion'='4'::jsonb and (item->>'characterId'=any(allowed)) and (item->>'opponentCharacterId'=any(allowed)))) else (item->>'characterId'=any(allowed)) end) is distinct from true then return false; end if;
     if jsonb_typeof(item->'timestamp') is distinct from 'string' or not (item->>'timestamp' ~ '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$') then return false; end if;
     if to_char((item->>'timestamp')::timestamptz at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') <> item->>'timestamp' then return false; end if;
     if jsonb_typeof(item->'localDate') is distinct from 'string' or not (item->>'localDate' ~ '^\d{4}-\d{2}-\d{2}$') or item->>'localDate' < '1900-01-01' then return false; end if;
     if ((item->>'localDate')::date)::text <> item->>'localDate' then return false; end if;
     if item ? 'league' then
-      if item->'league' is distinct from '"duel"'::jsonb or payload->'schemaVersion' is distinct from '3'::jsonb or (item->>'opponentId'=any(array['p1','p2','p3'])) is distinct from true or item->>'opponentId'=item->>'playerId' or item ? 'placements' or item ? 'characters' then return false; end if;
-    elsif item ? 'opponentId' then return false;
+      if item->'league' is distinct from '"duel"'::jsonb or (payload->'schemaVersion' is distinct from '3'::jsonb and payload->'schemaVersion' is distinct from '4'::jsonb) or (item->>'opponentId'=any(array['p1','p2','p3'])) is distinct from true or item->>'opponentId'=item->>'playerId' or item ? 'placements' or item ? 'characters' then return false; end if;
+    elsif item ? 'opponentId' or item ? 'opponentCharacterId' then return false;
     end if;
     if item ? 'placements' then
       if payload->'schemaVersion' = '1'::jsonb or jsonb_typeof(item->'placements') is distinct from 'array' then return false; end if;
