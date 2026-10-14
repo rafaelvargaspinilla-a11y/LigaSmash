@@ -44,6 +44,7 @@ export interface Win {
   localDate: string;
   league?: "duel";
   opponentId?: PlayerId;
+  opponentCharacterId?: string;
   placements?: Placements;
   characters?: MatchCharacters;
 }
@@ -52,7 +53,7 @@ export interface Preferences {
   favorites: string[];
 }
 export interface Backup {
-  schemaVersion: 1 | 2 | 3;
+  schemaVersion: 1 | 2 | 3 | 4;
   exportedAt: string;
   players: Player[];
   wins: Win[];
@@ -258,13 +259,13 @@ export function validDate(value: unknown): value is string {
 export function validateBackup(input: unknown): Backup {
   const fail = () => {
     throw new Error(
-      "Copia no válida. Se requiere JSON de Smash Tracker con esquema 1, 2 o 3 y datos correctos.",
+      "Copia no válida. Se requiere JSON de Smash Tracker con esquema 1, 2, 3 o 4 y datos correctos.",
     );
   };
   if (!input || typeof input !== "object") return fail();
   const b = input as Partial<Backup>;
   if (
-    ![1, 2, 3].includes(b.schemaVersion!) ||
+    ![1, 2, 3, 4].includes(b.schemaVersion!) ||
     !Array.isArray(b.players) ||
     b.players.length !== 3 ||
     !Array.isArray(b.wins) ||
@@ -297,16 +298,22 @@ export function validateBackup(input: unknown): Backup {
       ids.has(w.id) ||
       !playerIds.includes(w.playerId) ||
       (w.league === "duel"
-        ? w.characterId !== ""
+        ? !(w.characterId === "" && w.opponentCharacterId === undefined) &&
+          !(
+            b.schemaVersion === 4 &&
+            fighterById.has(w.characterId) &&
+            fighterById.has(w.opponentCharacterId!)
+          )
         : !fighterById.has(w.characterId)) ||
       (w.league !== undefined &&
         (w.league !== "duel" ||
-          b.schemaVersion !== 3 ||
+          (b.schemaVersion !== 3 && b.schemaVersion !== 4) ||
           !playerIds.includes(w.opponentId!) ||
           w.opponentId === w.playerId ||
           w.placements !== undefined ||
           w.characters !== undefined)) ||
-      (w.league === undefined && w.opponentId !== undefined) ||
+      (w.league === undefined &&
+        (w.opponentId !== undefined || w.opponentCharacterId !== undefined)) ||
       typeof w.timestamp !== "string" ||
       !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(w.timestamp) ||
       !Number.isFinite(Date.parse(w.timestamp)) ||
@@ -324,7 +331,13 @@ export function validateBackup(input: unknown): Backup {
     ids.add(w.id);
     return {
       ...(w.league === "duel"
-        ? { league: "duel" as const, opponentId: w.opponentId }
+        ? {
+            league: "duel" as const,
+            opponentId: w.opponentId,
+            ...(w.opponentCharacterId !== undefined
+              ? { opponentCharacterId: w.opponentCharacterId }
+              : {}),
+          }
         : {}),
       id: w.id,
       playerId: w.playerId,
@@ -340,7 +353,7 @@ export function validateBackup(input: unknown): Backup {
   if (b.favorites.some((id) => typeof id !== "string" || !fighterById.has(id)))
     return fail();
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     exportedAt: b.exportedAt,
     players,
     wins,
@@ -352,6 +365,7 @@ export function sameResult(a: Win, b: Win) {
   return (
     a.league === b.league &&
     a.opponentId === b.opponentId &&
+    a.opponentCharacterId === b.opponentCharacterId &&
     a.id === b.id &&
     a.playerId === b.playerId &&
     a.characterId === b.characterId &&

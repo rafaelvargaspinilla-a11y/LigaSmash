@@ -46,7 +46,7 @@ describe("persistencia IndexedDB", () => {
     await db.addWin("p1", "01");
     await db.preferences.put({ id: "main", favorites: ["82"] });
     const b = await db.exportBackup();
-    expect(b.schemaVersion).toBe(3);
+    expect(b.schemaVersion).toBe(4);
     await db.wins.clear();
     expect(await db.importBackup(b)).toEqual({ added: 1, duplicates: 0 });
     await db.setupPlayers(["Nuevo", "Luis", "Sol"]);

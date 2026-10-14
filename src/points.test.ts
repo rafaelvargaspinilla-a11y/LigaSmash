@@ -72,7 +72,7 @@ describe("podio 3 / 1 / 0", () => {
       }),
     ).toThrow();
   });
-  it("migra copias v1 a v3 sin modificar victorias antiguas", () => {
+  it("migra copias v1 a v4 sin modificar victorias antiguas", () => {
     const w = makeWin("p1", "01");
     const b = {
       schemaVersion: 1,
@@ -82,7 +82,7 @@ describe("podio 3 / 1 / 0", () => {
       favorites: [],
     };
     const normalized = validateBackup(b);
-    expect(normalized.schemaVersion).toBe(3);
+    expect(normalized.schemaVersion).toBe(4);
     expect(normalized.wins[0]).toEqual(w);
   });
   it("editar, completar podios antiguos, borrar y deshacer recalcula los puntos", async () => {

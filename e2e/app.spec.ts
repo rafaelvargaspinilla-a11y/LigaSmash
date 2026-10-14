@@ -2,9 +2,7 @@ import { readFileSync } from "node:fs";
 import { test, expect } from "@playwright/test";
 async function setup(page: import("@playwright/test").Page) {
   await page.goto("./");
-  await expect(
-    page.getByRole("heading", { name: "Vuestra arena." }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "La liga." })).toBeVisible();
   await expect(
     page.getByRole("dialog", { name: "Bienvenidos a vuestra arena" }),
   ).toHaveCount(0);
@@ -19,7 +17,7 @@ async function add(
 ) {
   await page
     .locator(".sidebar nav:visible, .mobile-nav:visible")
-    .getByRole("button", { name: "Inicio", exact: true })
+    .getByRole("button", { name: "LaLiga", exact: true })
     .click();
   await page
     .getByRole("button", { name: "Registrar partida", exact: true })
@@ -190,9 +188,7 @@ test("PWA precacheada funciona y registra victorias sin conexión", async ({
     .toBe(true);
   await context.setOffline(true);
   await page.reload();
-  await expect(
-    page.getByRole("heading", { name: "Vuestra arena." }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "La liga." })).toBeVisible();
   await add(page, "Andrés", "Sora");
   await page.reload();
   await expect(page.locator(".win-row")).toHaveCount(1);
@@ -222,7 +218,7 @@ test("desktop: empate, filtro vacío y gráfico accesible", async ({ page }) => 
   await expect(page.locator(".ranking-card").first()).toContainText("0%");
   await page
     .locator(".sidebar nav")
-    .getByRole("button", { name: "Inicio", exact: true })
+    .getByRole("button", { name: "LaLiga", exact: true })
     .click();
   await page.screenshot({ path: "/tmp/smash-desktop.png", fullPage: true });
   expect(
@@ -305,7 +301,7 @@ test("móvil: campos sin auto-zoom y registro solo en Inicio", async ({
   await controls();
   await page
     .getByRole("navigation", { name: "Navegación principal" })
-    .getByRole("button", { name: "Inicio", exact: true })
+    .getByRole("button", { name: "LaLiga", exact: true })
     .click();
   await page
     .getByRole("button", { name: "Registrar partida", exact: true })
@@ -353,9 +349,7 @@ test("plantel completo con retratos locales, sin formularios de nombres", async 
   ).toHaveCount(0);
   await dialog.getByRole("button", { name: "Cerrar", exact: true }).click();
   await page.reload();
-  await expect(
-    page.getByRole("heading", { name: "Vuestra arena." }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "La liga." })).toBeVisible();
   await expect(page.getByLabel("Jugador 1")).toHaveCount(0);
 });
 
@@ -388,7 +382,7 @@ test("podio, personajes y puntos persisten y se editan juntos", async ({
   const backup = JSON.parse(
     readFileSync((await (await download).path())!, "utf8"),
   );
-  expect(backup.schemaVersion).toBe(3);
+  expect(backup.schemaVersion).toBe(4);
   expect(backup.wins[0].placements).toEqual(["p1", "p2", "p3"]);
   expect(backup.wins[0].characters).toEqual(["01", "03", "06"]);
   await page
@@ -447,6 +441,13 @@ test("1vs1: ligas separadas, rivales, edición, recarga y eliminación", async (
   page,
 }) => {
   await setup(page);
+  await expect(page.locator(".mobile-nav button")).toHaveText([
+    "LaLiga",
+    "1vs1",
+    "Estadísticas",
+    "Personajes",
+    "Historial",
+  ]);
   await add(page, "Rafa");
   const navigate = async (name: string) =>
     page
@@ -460,12 +461,20 @@ test("1vs1: ligas separadas, rivales, edición, recarga y eliminación", async (
   let dialog = page.getByRole("dialog");
   await dialog.getByLabel("Ganador").selectOption("p2");
   await dialog.getByLabel("Rival").selectOption("p1");
+  await dialog.getByLabel("Buscar personaje").fill("Mario");
+  await dialog.getByRole("button", { name: "Mario", exact: true }).click();
+  await dialog.getByLabel("Buscar personaje").fill("Link");
+  await dialog.getByRole("button", { name: "Link", exact: true }).click();
   await dialog.getByRole("button", { name: "Guardar victoria" }).click();
   await expect(dialog).toBeHidden();
-  await expect(page.locator(".duel-panel").first()).toContainText("Carlos");
-  await expect(page.locator(".duel-panel").first()).toContainText(
-    "1 victorias · 1 partidas · 100%",
-  );
+  await expect(
+    page.locator(".duel-ranking .ranking-card").first(),
+  ).toContainText("Carlos");
+  await expect(
+    page.locator(".duel-ranking .ranking-card").first(),
+  ).toContainText("100");
+  await expect(page.locator(".duel-portraits")).toContainText("Carlos · Mario");
+  await expect(page.locator(".duel-portraits")).toContainText("Rafa · Link");
   await expect(
     page.getByText("Carlos gana a Rafa", { exact: true }),
   ).toBeVisible();
@@ -477,11 +486,47 @@ test("1vs1: ligas separadas, rivales, edición, recarga y eliminación", async (
   await page.getByRole("button", { name: "Editar", exact: true }).click();
   dialog = page.getByRole("dialog");
   await dialog.getByLabel("Ganador").selectOption("p3");
+  await dialog.getByLabel("Buscar personaje").fill("Kirby");
+  await dialog.getByRole("button", { name: "Kirby", exact: true }).click();
   await dialog.getByRole("button", { name: "Guardar victoria" }).click();
   await expect(
     page.getByText("Andrés gana a Rafa", { exact: true }),
   ).toBeVisible();
-  await navigate("Inicio");
+  await navigate("Estadísticas");
+  const leagueFilter = page.getByRole("group", {
+    name: "Liga de estadísticas",
+  });
+  await leagueFilter.getByRole("button", { name: "1vs1", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Clasificación 1vs1" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Evolución de victorias" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Registrar victoria 1vs1", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page
+      .locator(".character-stat")
+      .filter({
+        has: page.getByRole("heading", { name: "Kirby", exact: true }),
+      }),
+  ).toContainText("1 victorias · 0 derrotas");
+  await expect(
+    page
+      .locator(".character-stat")
+      .filter({
+        has: page.getByRole("heading", { name: "Link", exact: true }),
+      }),
+  ).toContainText("0 victorias · 1 derrotas");
+  await leagueFilter
+    .getByRole("button", { name: "La liga", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Ranking por puntos" }),
+  ).toBeVisible();
+  await navigate("LaLiga");
   await expect(page.locator(".ranking-grid")).toContainText("3");
   await expect(page.locator(".ranking-grid")).toContainText("Rafa");
   await navigate("Historial");

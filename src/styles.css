@@ -898,7 +898,7 @@ a {
   inset: 0;
   background: #05060bd9;
   backdrop-filter: blur(7px);
-  z-index: 40;
+  z-index: 70;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1833,4 +1833,49 @@ a {
 }
 .mobile-nav button {
   min-width: 0;
+}
+
+.duel-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 24px;
+}
+.duel-portraits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 10px;
+}
+.duel-portraits > span,
+.duel-character-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.duel-portraits small,
+.character-slots small {
+  display: block;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.league-filter {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.league-filter .selected {
+  color: var(--gold);
+  border-color: var(--gold);
+  background: #e5b45412;
+}
+.duel-fighter-grid {
+  margin: 12px 0 20px;
+}
+.character-slots .portrait {
+  flex: 0 0 42px;
+}
+@media (max-width: 600px) {
+  .duel-actions .primary {
+    width: 100%;
+  }
 }

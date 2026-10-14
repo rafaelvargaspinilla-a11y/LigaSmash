@@ -109,3 +109,9 @@ Antes de usar este formato con un proyecto Supabase que ya tenga la versión ant
 La pestaña **1vs1** registra ganador, rival y fecha, sin personajes ni puntos. Incluye clasificación por victorias (los empates comparten puesto), porcentaje sobre los duelos disputados por cada jugador, resultados entre parejas e historial editable. Sus filtros y estadísticas son independientes de la liga de tres, que conserva la puntuación 3/1/0 y los personajes de cada puesto. Las copias y el grupo compartido incluyen ambas ligas en el esquema 3; las partidas antiguas siguen perteneciendo a la liga de tres.
 
 En Supabase existente, ejecuta `supabase/duels.sql` antes de desplegar esta versión; no hace falta repetir `points.sql`.
+
+La pantalla principal se titula **La liga.** y la navegación comienza con **LaLiga → 1vs1**. La liga de duelos usa las mismas tarjetas y colores que LaLiga; cada duelo nuevo exige seleccionar el personaje de cada jugador, con retratos y búsqueda. Al cambiar el orden ganador/rival, los personajes permanecen asociados al jugador. Los duelos antiguos se pueden completar desde su historial.
+
+**Estadísticas** reúne ambas ligas con los botones **La liga / 1vs1** y un filtro de periodo común. La opción 1vs1 incluye clasificación por victorias, evolución acumulada, resultados entre parejas y victorias/derrotas por luchador y jugador. Las partidas sin personajes conservan sus resultados y no se incluyen en los recuentos de luchadores.
+
+Las copias compartidas usan el esquema 4. En Supabase existente, ejecuta `supabase/duel-characters.sql` antes de publicar esta versión.
