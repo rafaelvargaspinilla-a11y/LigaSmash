@@ -1611,3 +1611,22 @@ a {
   border: 1px solid #ed465055;
   border-radius: 8px;
 }
+
+/* Safari focuses without auto-zoom when form controls use at least 16px.
+   Keep pinch-to-zoom available; include landscape iPhones and touch tablets. */
+@media (max-width: 850px), (pointer: coarse) {
+  :root input,
+  :root select,
+  :root textarea {
+    font-size: 16px;
+  }
+}
+.brand-mark {
+  background: #101116;
+  color: #e5bf6e;
+  border: 1px solid #e5bf6e55;
+  transform: none;
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: -2px;
+}

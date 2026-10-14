@@ -94,3 +94,14 @@ Para Entrenador Pokémon usa una imagen autorizada que represente la selección 
 | `79-80.png` | Pyra / Mythra          |
 | `81.png`    | Kazuya                 |
 | `82.png`    | Sora                   |
+
+## Añadir fotos desde GitHub (para todos los dispositivos)
+
+1. Prepara los retratos que tengas permiso para publicar en formato PNG. Si son JPG/WebP, conviértelos a PNG; no basta con cambiar la extensión.
+2. Renombra cada archivo según la tabla: `01.png` para Mario, `13e.png` para Daisy, `82.png` para Sora, etc.
+3. Abre [esta carpeta en GitHub](https://github.com/rafaelvargaspinilla-a11y/LigaSmash/tree/main/public/characters) y selecciona **Add file → Upload files**.
+4. Arrastra los archivos y confirma **Commit changes** en `main`.
+5. Espera a que **Publish Smash Tracker** termine en verde en Actions. Los retratos estarán disponibles para todos los dispositivos y se incluirán en la copia offline.
+6. Si una PWA abierta conserva la versión anterior, cierra todas sus ventanas y vuelve a abrirla. No borres el almacenamiento del sitio.
+
+Se pueden incorporar pocos retratos primero y completar el resto después. Las partidas y estadísticas no cambian al añadir o sustituir imágenes.

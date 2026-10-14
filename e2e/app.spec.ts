@@ -16,6 +16,10 @@ async function add(
   fighter = "Mario",
 ) {
   await page
+    .locator(".sidebar nav:visible, .mobile-nav:visible")
+    .getByRole("button", { name: "Inicio", exact: true })
+    .click();
+  await page
     .getByRole("button", { name: "Registrar victoria", exact: true })
     .click();
   const dialog = page.getByRole("dialog", {
@@ -243,4 +247,61 @@ test("miles de partidas: totales correctos e historial paginado", async ({
   await expect(page.locator(".win-row")).toHaveCount(50);
   await page.getByRole("button", { name: /Mostrar 50 más/ }).click();
   await expect(page.locator(".win-row")).toHaveCount(100);
+});
+
+test("móvil: campos sin auto-zoom y registro solo en Inicio", async ({
+  page,
+}) => {
+  await page.goto("./");
+  const controls = async () => {
+    const fields = page.locator(
+      "input:visible,select:visible,textarea:visible",
+    );
+    for (const field of await fields.all())
+      expect(
+        await field.evaluate((e) => parseFloat(getComputedStyle(e).fontSize)),
+      ).toBeGreaterThanOrEqual(16);
+  };
+  await page
+    .getByRole("dialog", { name: "Bienvenidos a vuestra arena" })
+    .waitFor();
+  await controls();
+  const form = page.getByRole("dialog");
+  await form.getByLabel("Jugador 1").fill("Ana");
+  await form.getByLabel("Jugador 2").fill("Luis");
+  await form.getByLabel("Jugador 3").fill("Sol");
+  await form.getByRole("button", { name: "¡Empezar a jugar!" }).click();
+  for (const section of ["Personajes", "Historial", "Estadísticas"]) {
+    await page
+      .getByRole("navigation", { name: "Navegación principal" })
+      .getByRole("button", { name: section, exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", { name: "Registrar victoria", exact: true }),
+    ).toHaveCount(0);
+    await controls();
+  }
+  await page.getByLabel("Periodo", { exact: true }).selectOption("custom");
+  await controls();
+  await page
+    .getByRole("navigation", { name: "Navegación principal" })
+    .getByRole("button", { name: "Inicio", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Registrar victoria", exact: true })
+    .click();
+  await controls();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Cerrar", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Abrir ajustes" }).click();
+  await controls();
+  await page.setViewportSize({ width: 844, height: 390 });
+  await controls();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
 });

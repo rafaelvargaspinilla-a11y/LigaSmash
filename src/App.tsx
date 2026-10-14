@@ -279,7 +279,7 @@ export default function App() {
           }}
         >
           <span className="brand-mark">
-            <Swords size={25} />
+            <span aria-hidden="true">S</span>
           </span>
           <span>
             SMASH<small>TRACKER</small>
@@ -363,14 +363,16 @@ export default function App() {
                 }
               </p>
             </div>
-            <button
-              className="primary"
-              onClick={() => setShowWin(true)}
-              disabled={players.length !== 3}
-            >
-              <Plus size={20} />
-              Registrar victoria
-            </button>
+            {page === "home" && (
+              <button
+                className="primary"
+                onClick={() => setShowWin(true)}
+                disabled={players.length !== 3}
+              >
+                <Plus size={20} />
+                Registrar victoria
+              </button>
+            )}
           </div>
           {page !== "home" && (
             <div className="filter-bar">
