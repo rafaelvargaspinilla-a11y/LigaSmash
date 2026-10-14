@@ -1,6 +1,9 @@
 import Dexie, { type Table } from "dexie";
 import {
   makeWin,
+  sameResult,
+  type Placements,
+  type MatchCharacters,
   fixedPlayerNames,
   validateBackup,
   type Player,
@@ -68,8 +71,14 @@ export class TrackerDB extends Dexie {
       await this.enqueue({ kind: "players", before, after });
     });
   }
-  async addWin(playerId: PlayerId, characterId: string, date = new Date()) {
-    const w = makeWin(playerId, characterId, date);
+  async addWin(
+    playerId: PlayerId,
+    characterId: string,
+    date = new Date(),
+    placements?: Placements,
+    characters?: MatchCharacters,
+  ) {
+    const w = makeWin(playerId, characterId, date, placements, characters);
     await this.transaction(
       "rw",
       this.players,
@@ -89,11 +98,19 @@ export class TrackerDB extends Dexie {
     playerId: PlayerId,
     characterId: string,
     date: Date,
+    placements?: Placements,
+    characters?: MatchCharacters,
   ) {
-    const w = makeWin(playerId, characterId, date);
+    const w = makeWin(playerId, characterId, date, placements, characters);
     await this.transaction("rw", this.wins, this.pending, async () => {
       const before = await this.wins.get(id);
       if (!before) throw new Error("La partida ya no existe.");
+      if (before.placements && !placements)
+        throw new Error("Selecciona el podio completo al editar esta partida.");
+      if (before.characters && !characters)
+        throw new Error(
+          "Selecciona los tres personajes al editar esta partida.",
+        );
       const after = { ...w, id };
       await this.wins.put(after);
       await this.enqueue({ kind: "edit", before, after });
@@ -115,7 +132,7 @@ export class TrackerDB extends Dexie {
       this.wins,
       this.preferences,
       async () => ({
-        schemaVersion: 1,
+        schemaVersion: 2,
         exportedAt: new Date().toISOString(),
         players: await this.players.toArray(),
         wins: await this.wins.toArray(),
@@ -140,12 +157,7 @@ export class TrackerDB extends Dexie {
         for (const w of b.wins) {
           const old = byId.get(w.id);
           if (old) {
-            if (
-              old.playerId !== w.playerId ||
-              old.characterId !== w.characterId ||
-              old.timestamp !== w.timestamp ||
-              old.localDate !== w.localDate
-            )
+            if (!sameResult(old, w))
               throw new Error(
                 "Hay IDs con datos distintos. Importación cancelada para proteger tus partidas.",
               );

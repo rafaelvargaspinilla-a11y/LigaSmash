@@ -149,7 +149,8 @@ export default function App() {
         .filter(
           (w) =>
             (!historyPlayer || w.playerId === historyPlayer) &&
-            (!historyCharacter || w.characterId === historyCharacter),
+            (!historyCharacter ||
+              (w.characters ?? [w.characterId]).includes(historyCharacter)),
         )
         .sort(
           (a, b) =>
@@ -179,7 +180,7 @@ export default function App() {
     notify(
       editing
         ? "Partida actualizada"
-        : "¡Victoria registrada! El ranking ya está actualizado.",
+        : "¡Partida registrada! El ranking ya está actualizado.",
     );
   };
   async function undo() {
@@ -378,7 +379,7 @@ export default function App() {
                 disabled={players.length !== 3}
               >
                 <Plus size={20} />
-                Registrar victoria
+                Registrar partida
               </button>
             )}
           </div>
@@ -426,7 +427,7 @@ export default function App() {
                   </strong>
                   <small>
                     {(page === "home" ? allStats : stats).leaders.length
-                      ? "La cima del ranking"
+                      ? "Clasificación por puntos · 3 / 1 / 0"
                       : "La primera victoria puede ser tuya"}
                   </small>
                 </section>
@@ -458,7 +459,7 @@ export default function App() {
                       ? "LA RIVALIDAD"
                       : "EL PERIODO SELECCIONADO"}
                   </p>
-                  <h2>Ranking de jugadores</h2>
+                  <h2>Ranking por puntos</h2>
                 </div>
                 <span className="tag">
                   {page === "home"
@@ -466,11 +467,27 @@ export default function App() {
                     : periods[period].toUpperCase()}
                 </span>
               </div>
+              {(page === "home" ? allStats : stats).incomplete > 0 && (
+                <p className="legacy-note">
+                  {(page === "home" ? allStats : stats).incomplete} partidas
+                  antiguas sin podio completo. El ganador suma 3 puntos;
+                  completa segundo y tercero desde Historial para añadir el
+                  punto restante.
+                </p>
+              )}
+              {(page === "home" ? allStats : stats).incompleteCharacters >
+                (page === "home" ? allStats : stats).incomplete && (
+                <p className="legacy-note">
+                  Hay partidas con puestos registrados pero personajes
+                  pendientes. Puedes completarlos desde Historial.
+                </p>
+              )}
               <div className="ranking-grid">
                 {(page === "home" ? allStats : stats).ranking.map(
                   (p, _index, arr) => {
-                    const rank = arr.filter((x) => x.wins > p.wins).length + 1;
-                    const leader = p.wins > 0 && rank === 1;
+                    const rank =
+                      arr.filter((x) => x.points > p.points).length + 1;
+                    const leader = p.points > 0 && rank === 1;
                     return (
                       <section
                         key={p.id}
@@ -486,7 +503,8 @@ export default function App() {
                           {leader ? (
                             <span className="leader-tag">
                               <Trophy size={12} />
-                              {arr.filter((x) => x.wins === p.wins).length > 1
+                              {arr.filter((x) => x.points === p.points).length >
+                              1
                                 ? "EMPATE"
                                 : "LÍDER"}
                             </span>
@@ -501,6 +519,10 @@ export default function App() {
                             {p.name.slice(0, 1).toUpperCase()}
                           </span>
                           <h3>{p.name}</h3>
+                        </div>
+                        <div className="player-points">
+                          <strong>{p.points.toLocaleString("es")}</strong>
+                          <span>puntos</span>
                         </div>
                         <div className="player-numbers">
                           <div>
@@ -519,6 +541,11 @@ export default function App() {
                         </div>
                         <div className="progress-track">
                           <div style={{ width: `${p.percent}%` }} />
+                        </div>
+                        <div className="position-counts">
+                          <span>1.º {p.wins}</span>
+                          <span>2.º {p.seconds}</span>
+                          <span>3.º {p.thirds}</span>
                         </div>
                         <div className="card-foot">
                           <span>Mejor racha</span>
@@ -539,11 +566,15 @@ export default function App() {
                     </div>
                     {stats.total ? (
                       <div className="character-stats-grid">
-                        {stats.characterRanking.map(([id, count]) => (
+                        {stats.characterPointsRanking.map(([id]) => (
                           <CharacterStat
                             key={id}
                             id={id}
-                            count={count}
+                            count={
+                              stats.characterRanking.find(
+                                ([char]) => char === id,
+                              )?.[1] ?? 0
+                            }
                             wins={filtered}
                             players={players}
                             favorite={favorites.includes(id)}
@@ -561,7 +592,7 @@ export default function App() {
                 <div className="home-bottom">
                   <section className="panel">
                     <div className="section-heading">
-                      <h2>Últimas victorias</h2>
+                      <h2>Últimas partidas</h2>
                       <button
                         className="text-button"
                         onClick={() => setPage("history")}
@@ -604,7 +635,7 @@ export default function App() {
                       disabled={players.length !== 3}
                     >
                       <Plus size={18} />
-                      Nueva victoria
+                      Nueva partida
                     </button>
                   </section>
                 </div>
@@ -642,7 +673,7 @@ export default function App() {
                 </div>
               </div>
               <div className="section-heading">
-                <h2>Ranking de luchadores</h2>
+                <h2>Ranking de luchadores por puntos</h2>
                 <label className="search">
                   <Search size={17} />
                   <input
@@ -654,8 +685,9 @@ export default function App() {
                 </label>
               </div>
               <p className="muted small-note">
-                Solo conocemos el luchador ganador: estos porcentajes son su
-                aportación a las victorias de cada jugador.
+                Los puntos cuentan los puestos registrados. Los porcentajes
+                muestran la aportación de cada personaje a las victorias de su
+                jugador.
               </p>
               <div className="character-stats-grid">
                 {[...fighters]
@@ -664,10 +696,10 @@ export default function App() {
                   )
                   .sort(
                     (a, b) =>
-                      (stats.characterRanking.find(
+                      (stats.characterPointsRanking.find(
                         ([id]) => id === b.id,
                       )?.[1] ?? 0) -
-                      (stats.characterRanking.find(
+                      (stats.characterPointsRanking.find(
                         ([id]) => id === a.id,
                       )?.[1] ?? 0),
                   )

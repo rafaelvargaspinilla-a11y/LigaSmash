@@ -34,19 +34,23 @@ export function fixedPlayerNames(current: Player[]): Player[] {
     return mapped as Player[];
   return fixedPlayers.map((p) => ({ ...p }));
 }
+export type MatchCharacters = [string, string, string];
+export type Placements = [PlayerId, PlayerId, PlayerId];
 export interface Win {
   id: string;
   playerId: PlayerId;
   characterId: string;
   timestamp: string;
   localDate: string;
+  placements?: Placements;
+  characters?: MatchCharacters;
 }
 export interface Preferences {
   id: "main";
   favorites: string[];
 }
 export interface Backup {
-  schemaVersion: 1;
+  schemaVersion: 1 | 2;
   exportedAt: string;
   players: Player[];
   wins: Win[];
@@ -118,8 +122,40 @@ export function filterPeriod(wins: Win[], bounds: [string, string]): Win[] {
     (w) => w.localDate >= bounds[0] && w.localDate <= bounds[1],
   );
 }
+export function pointsFor(win: Win, player: PlayerId): number {
+  return win.playerId === player ? 3 : win.placements?.[1] === player ? 1 : 0;
+}
+export function validCharacters(
+  input: unknown,
+  winnerCharacter: string,
+): input is MatchCharacters {
+  return (
+    Array.isArray(input) &&
+    input.length === 3 &&
+    input.every((id) => typeof id === "string" && fighterById.has(id)) &&
+    input[0] === winnerCharacter
+  );
+}
+export function characterAt(win: Win, index: number): string | undefined {
+  return win.characters?.[index] ?? (index === 0 ? win.characterId : undefined);
+}
+export function validPlacements(
+  input: unknown,
+  winner: PlayerId,
+): input is Placements {
+  return (
+    Array.isArray(input) &&
+    input.length === 3 &&
+    new Set(input).size === 3 &&
+    input.every((id) => playerIds.includes(id)) &&
+    input[0] === winner
+  );
+}
 export function statistics(wins: Win[], players: Player[]) {
   const counts = new Map<PlayerId, number>(playerIds.map((id) => [id, 0]));
+  const points = new Map<PlayerId, number>(playerIds.map((id) => [id, 0]));
+  const seconds = new Map<PlayerId, number>(playerIds.map((id) => [id, 0]));
+  const thirds = new Map<PlayerId, number>(playerIds.map((id) => [id, 0]));
   const characters = new Map<string, number>();
   const best = new Map<PlayerId, number>(playerIds.map((id) => [id, 0]));
   let previous: PlayerId | undefined;
@@ -131,6 +167,12 @@ export function statistics(wins: Win[], players: Player[]) {
   for (const w of sorted) {
     counts.set(w.playerId, (counts.get(w.playerId) ?? 0) + 1);
     characters.set(w.characterId, (characters.get(w.characterId) ?? 0) + 1);
+    for (const id of playerIds)
+      points.set(id, (points.get(id) ?? 0) + pointsFor(w, id));
+    if (w.placements) {
+      seconds.set(w.placements[1], (seconds.get(w.placements[1]) ?? 0) + 1);
+      thirds.set(w.placements[2], (thirds.get(w.placements[2]) ?? 0) + 1);
+    }
     streak = w.playerId === previous ? streak + 1 : 1;
     previous = w.playerId;
     best.set(w.playerId, Math.max(best.get(w.playerId) ?? 0, streak));
@@ -139,18 +181,35 @@ export function statistics(wins: Win[], players: Player[]) {
     .map((p) => ({
       ...p,
       wins: counts.get(p.id) ?? 0,
+      points: points.get(p.id) ?? 0,
+      seconds: seconds.get(p.id) ?? 0,
+      thirds: thirds.get(p.id) ?? 0,
       percent: wins.length ? ((counts.get(p.id) ?? 0) / wins.length) * 100 : 0,
       streak: best.get(p.id) ?? 0,
     }))
-    .sort((a, b) => b.wins - a.wins);
-  const max = ranking[0]?.wins ?? 0;
+    .sort((a, b) => b.points - a.points || b.wins - a.wins);
+  const max = ranking[0]?.points ?? 0;
+  const maxWins = Math.max(0, ...counts.values());
   const characterRanking = [...characters].sort(
     (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
   );
   return {
     total: wins.length,
     ranking,
-    leaders: max ? ranking.filter((p) => p.wins === max) : [],
+    leaders: max ? ranking.filter((p) => p.points === max) : [],
+    victoryLeaders: maxWins ? ranking.filter((p) => p.wins === maxWins) : [],
+    incomplete: wins.filter((w) => !w.placements).length,
+    incompleteCharacters: wins.filter((w) => !w.characters).length,
+    characterPointsRanking: [
+      ...wins.reduce((map, w) => {
+        for (const entry of matchEntries(w))
+          map.set(
+            entry.characterId,
+            (map.get(entry.characterId) ?? 0) + entry.points,
+          );
+        return map;
+      }, new Map<string, number>()),
+    ].sort((a, b) => b[1] - a[1]),
     characterRanking,
     topCharacters: characterRanking.filter(
       ([, n]) => n === characterRanking[0]?.[1],
@@ -162,11 +221,16 @@ export function makeWin(
   playerId: PlayerId,
   characterId: string,
   date = new Date(),
+  placements?: Placements,
+  characters?: MatchCharacters,
 ): Win {
   if (
     !playerIds.includes(playerId) ||
     !fighterById.has(characterId) ||
-    !Number.isFinite(date.getTime())
+    !Number.isFinite(date.getTime()) ||
+    (placements !== undefined && !validPlacements(placements, playerId)) ||
+    (characters !== undefined &&
+      (!placements || !validCharacters(characters, characterId)))
   )
     throw new Error("Victoria no válida");
   return {
@@ -175,6 +239,8 @@ export function makeWin(
     characterId,
     timestamp: date.toISOString(),
     localDate: localDate(date),
+    ...(placements ? { placements: [...placements] as Placements } : {}),
+    ...(characters ? { characters: [...characters] as MatchCharacters } : {}),
   };
 }
 export function validDate(value: unknown): value is string {
@@ -188,13 +254,13 @@ export function validDate(value: unknown): value is string {
 export function validateBackup(input: unknown): Backup {
   const fail = () => {
     throw new Error(
-      "Copia no válida. Se requiere JSON de Smash Tracker con esquema 1 y datos correctos.",
+      "Copia no válida. Se requiere JSON de Smash Tracker con esquema 1 o 2 y datos correctos.",
     );
   };
   if (!input || typeof input !== "object") return fail();
   const b = input as Partial<Backup>;
   if (
-    b.schemaVersion !== 1 ||
+    (b.schemaVersion !== 1 && b.schemaVersion !== 2) ||
     !Array.isArray(b.players) ||
     b.players.length !== 3 ||
     !Array.isArray(b.wins) ||
@@ -231,7 +297,14 @@ export function validateBackup(input: unknown): Backup {
       !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(w.timestamp) ||
       !Number.isFinite(Date.parse(w.timestamp)) ||
       new Date(w.timestamp).toISOString() !== w.timestamp ||
-      !validDate(w.localDate)
+      !validDate(w.localDate) ||
+      (w.placements !== undefined &&
+        (b.schemaVersion !== 2 ||
+          !validPlacements(w.placements, w.playerId))) ||
+      (w.characters !== undefined &&
+        (b.schemaVersion !== 2 ||
+          !w.placements ||
+          !validCharacters(w.characters, w.characterId)))
     )
       return fail();
     ids.add(w.id);
@@ -241,15 +314,56 @@ export function validateBackup(input: unknown): Backup {
       characterId: w.characterId,
       timestamp: new Date(w.timestamp).toISOString(),
       localDate: w.localDate,
+      ...(w.placements ? { placements: [...w.placements] as Placements } : {}),
+      ...(w.characters
+        ? { characters: [...w.characters] as MatchCharacters }
+        : {}),
     };
   });
   if (b.favorites.some((id) => typeof id !== "string" || !fighterById.has(id)))
     return fail();
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     exportedAt: b.exportedAt,
     players,
     wins,
     favorites: [...new Set(b.favorites)],
   };
+}
+
+export function sameResult(a: Win, b: Win) {
+  return (
+    a.id === b.id &&
+    a.playerId === b.playerId &&
+    a.characterId === b.characterId &&
+    a.timestamp === b.timestamp &&
+    a.localDate === b.localDate &&
+    (a.placements ?? []).join(",") === (b.placements ?? []).join(",") &&
+    (a.characters ?? []).join(",") === (b.characters ?? []).join(",")
+  );
+}
+
+export function matchEntries(win: Win) {
+  if (!win.placements)
+    return [
+      {
+        playerId: win.playerId,
+        characterId: win.characterId,
+        position: 1,
+        points: 3,
+      },
+    ];
+  return win.placements.flatMap((playerId, index) => {
+    const characterId = characterAt(win, index);
+    return characterId
+      ? [
+          {
+            playerId,
+            characterId,
+            position: index + 1,
+            points: [3, 1, 0][index],
+          },
+        ]
+      : [];
+  });
 }

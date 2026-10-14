@@ -1,4 +1,10 @@
-import { validateBackup, type Backup, type Player, type Win } from "./model";
+import {
+  sameResult,
+  validateBackup,
+  type Backup,
+  type Player,
+  type Win,
+} from "./model";
 export type Change =
   | { kind: "add"; win: Win }
   | { kind: "edit"; before: Win; after: Win }
@@ -13,12 +19,7 @@ export interface RemoteState {
   revision: number;
   data: Backup;
 }
-export const sameWin = (a: Win, b: Win) =>
-  a.id === b.id &&
-  a.playerId === b.playerId &&
-  a.characterId === b.characterId &&
-  a.timestamp === b.timestamp &&
-  a.localDate === b.localDate;
+export const sameWin = sameResult;
 const samePlayers = (a: Player[], b: Player[]) =>
   a.length === b.length &&
   a.every((p) => b.some((q) => p.id === q.id && p.name === q.name));

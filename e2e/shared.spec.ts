@@ -73,16 +73,35 @@ test("dos dispositivos: grupo privado, cambios offline, fusión y respuesta perd
     ).toBeVisible();
     const add = async (p: typeof page, player: string, fighter: string) => {
       await p
-        .getByRole("button", { name: "Registrar victoria", exact: true })
+        .getByRole("button", { name: "Registrar partida", exact: true })
         .click();
       const form = p.getByRole("dialog", {
-        name: "¿Quién se lleva la victoria?",
+        name: "Registrar partida",
       });
       await form.getByRole("button", { name: player, exact: true }).click();
+      await form
+        .getByRole("button", {
+          name: `Segundo: ${player === "Carlos" ? "Rafa" : "Carlos"}`,
+          exact: true,
+        })
+        .click();
       await form.getByLabel("Buscar luchador", { exact: true }).fill(fighter);
       await form.getByRole("button", { name: fighter, exact: true }).click();
+      for (const [slot, name] of [
+        [2, "Link"],
+        [3, "Kirby"],
+      ] as const) {
+        await form
+          .getByRole("button", {
+            name: `Personaje del puesto ${slot}`,
+            exact: true,
+          })
+          .click();
+        await form.getByLabel("Buscar luchador", { exact: true }).fill(name);
+        await form.getByRole("button", { name, exact: true }).click();
+      }
       await form
-        .getByRole("button", { name: "Registrar victoria", exact: true })
+        .getByRole("button", { name: "Registrar partida", exact: true })
         .click();
       await expect(form).toBeHidden();
     };
@@ -137,6 +156,26 @@ test("dos dispositivos: grupo privado, cambios offline, fusión y respuesta perd
       b.getByRole("dialog", { name: "Ajustes de la arena" }),
     ).toContainText("0 cambios pendientes", { timeout: 15000 });
     await expect(b.getByText("Conflicto:", { exact: false })).toHaveCount(0);
+    const remote = (
+      await pg.query<{
+        data: {
+          wins: Array<{
+            placements: string[];
+            characters: string[];
+            characterId: string;
+          }>;
+        };
+      }>("select public.smash_read_group($1)->'data' as data", [code])
+    ).rows[0].data;
+    expect(remote.wins).toHaveLength(5);
+    expect(
+      remote.wins.every(
+        (w) =>
+          w.placements.length === 3 &&
+          w.characters.length === 3 &&
+          w.characters[0] === w.characterId,
+      ),
+    ).toBe(true);
   } finally {
     await second.close();
     await pg.close();

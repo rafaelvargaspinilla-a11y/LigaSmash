@@ -13,6 +13,11 @@ import { db } from "./db";
 import { fighters, fighterById, normalize } from "./characters";
 import {
   localDate,
+  pointsFor,
+  type Placements,
+  type MatchCharacters,
+  characterAt,
+  matchEntries,
   periods,
   type Player,
   type PlayerId,
@@ -152,7 +157,32 @@ export function WinForm({
   onError: (s: string) => void;
 }) {
   const [player, setPlayer] = useState<PlayerId | undefined>(editing?.playerId);
-  const [character, setCharacter] = useState(editing?.characterId ?? "");
+  const [second, setSecond] = useState<PlayerId | undefined>(
+    editing?.placements?.[1],
+  );
+  const third = players.find((p) => p.id !== player && p.id !== second)?.id;
+  const placements: Placements | undefined =
+    player && second && third ? [player, second, third] : undefined;
+  const [chosen, setChosen] = useState<Partial<Record<PlayerId, string>>>(
+    () => {
+      const initial: Partial<Record<PlayerId, string>> = {};
+      if (editing) {
+        initial[editing.playerId] = editing.characterId;
+        editing.placements?.forEach((id, index) => {
+          const char = characterAt(editing, index);
+          if (char) initial[id] = char;
+        });
+      }
+      return initial;
+    },
+  );
+  const [slot, setSlot] = useState(0);
+  const activePlayer = placements?.[slot] ?? (slot === 0 ? player : undefined);
+  const character = activePlayer ? (chosen[activePlayer] ?? "") : "";
+  const characters: MatchCharacters | undefined =
+    placements && placements.every((id) => chosen[id])
+      ? (placements.map((id) => chosen[id]!) as MatchCharacters)
+      : undefined;
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
@@ -165,23 +195,36 @@ export function WinForm({
     ...new Set(
       [...wins]
         .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
-        .map((w) => w.characterId),
+        .flatMap((w) => w.characters ?? [w.characterId]),
     ),
   ].slice(0, 8);
   const quick = [...new Set([...favorites, ...recent])].slice(0, 12);
   const visible = fighters.filter((f) =>
     normalize(f.name).includes(normalize(query)),
   );
+  const selectCharacter = (id: string) => {
+    if (!activePlayer) return;
+    const next = { ...chosen, [activePlayer]: id };
+    setChosen(next);
+    if (placements) {
+      const missing = placements.findIndex((p) => !next[p]);
+      if (missing >= 0) {
+        setSlot(missing);
+        setQuery("");
+      }
+    }
+  };
   const tile = (id: string) => {
     const f = fighterById.get(id)!;
     return (
       <button
         key={id}
         type="button"
+        disabled={!activePlayer}
         className={`fighter-tile ${character === id ? "selected" : ""}`}
         aria-label={f.name}
         aria-pressed={character === id}
-        onClick={() => setCharacter(id)}
+        onClick={() => selectCharacter(id)}
       >
         <Portrait id={id} />
         <span>{f.name}</span>
@@ -191,27 +234,45 @@ export function WinForm({
   };
   return (
     <Modal
-      title={editing ? "Editar partida" : "¿Quién se lleva la victoria?"}
+      title={editing ? "Editar partida" : "Registrar partida"}
       onClose={onClose}
     >
       <form
         onSubmit={async (e) => {
           e.preventDefault();
-          if (!player || !character || busyRef.current) return;
+          if (!placements || !characters || busyRef.current) return;
           busyRef.current = true;
           setBusy(true);
           try {
+            const date = editing ? new Date(time) : new Date();
             if (editing) {
-              const date = new Date(time);
-              await db.editWin(editing.id, player, character, date);
+              await db.editWin(
+                editing.id,
+                placements[0],
+                characters[0],
+                date,
+                placements,
+                characters,
+              );
               onSaved({
                 ...editing,
-                playerId: player,
-                characterId: character,
+                playerId: placements[0],
+                characterId: characters[0],
                 timestamp: date.toISOString(),
                 localDate: localDate(date),
+                placements,
+                characters,
               });
-            } else onSaved(await db.addWin(player, character));
+            } else
+              onSaved(
+                await db.addWin(
+                  placements[0],
+                  characters[0],
+                  date,
+                  placements,
+                  characters,
+                ),
+              );
           } catch (e) {
             onError(errorText(e));
           } finally {
@@ -221,7 +282,7 @@ export function WinForm({
         }}
       >
         <p className="step-label">
-          01 <span>Selecciona al ganador</span>
+          01 <span>Primer puesto · 3 puntos</span>
         </p>
         <div className="player-picker">
           {players.map((p) => (
@@ -229,30 +290,113 @@ export function WinForm({
               key={p.id}
               type="button"
               className={player === p.id ? "selected" : ""}
+              aria-label={p.name}
+              aria-pressed={player === p.id}
               style={
                 {
                   "--player-color": colors[indexOf(p.id)],
                 } as React.CSSProperties
               }
-              aria-label={p.name}
-              aria-pressed={player === p.id}
-              onClick={() => setPlayer(p.id)}
+              onClick={() => {
+                setPlayer(p.id);
+                if (second === p.id) setSecond(undefined);
+                setSlot(0);
+                setQuery("");
+              }}
             >
-              <span className="avatar">{p.name.slice(0, 1).toUpperCase()}</span>
+              <span className="avatar">{p.name[0]}</span>
               {p.name}
             </button>
           ))}
         </div>
         <p className="step-label">
-          02 <span>Elige su luchador</span>
+          02 <span>Segundo puesto · 1 punto</span>
+        </p>
+        <div className="player-picker second-picker">
+          {players
+            .filter((p) => p.id !== player)
+            .map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                disabled={!player}
+                aria-label={`Segundo: ${p.name}`}
+                aria-pressed={second === p.id}
+                className={second === p.id ? "selected" : ""}
+                style={
+                  {
+                    "--player-color": colors[indexOf(p.id)],
+                  } as React.CSSProperties
+                }
+                onClick={() => {
+                  setSecond(p.id);
+                  setSlot(0);
+                  setQuery("");
+                }}
+              >
+                {p.name}
+              </button>
+            ))}
+        </div>
+        <p className="podium-third">
+          Tercer puesto · 0 puntos:{" "}
+          <strong>
+            {placements
+              ? nameOf(players, placements[2])
+              : "Se determina al elegir primero y segundo"}
+          </strong>
+        </p>
+        <p className="step-label">
+          03 <span>Personaje de cada jugador</span>
+        </p>
+        <div className="character-slots">
+          {[0, 1, 2].map((index) => {
+            const id =
+              placements?.[index] ?? (index === 0 ? player : undefined);
+            const selected = id ? chosen[id] : undefined;
+            return (
+              <button
+                key={index}
+                type="button"
+                disabled={!id}
+                aria-label={`Personaje del puesto ${index + 1}`}
+                aria-pressed={slot === index}
+                className={slot === index ? "selected" : ""}
+                onClick={() => {
+                  setSlot(index);
+                  setQuery("");
+                }}
+              >
+                <span>
+                  {index + 1}.º · {[3, 1, 0][index]} pts
+                </span>
+                {selected ? (
+                  <Portrait id={selected} />
+                ) : (
+                  <span className="character-slot-empty">Elegir</span>
+                )}
+                <strong>{id ? nameOf(players, id) : "Sin elegir"}</strong>
+                <small>
+                  {selected
+                    ? fighterById.get(selected)?.name
+                    : "Personaje pendiente"}
+                </small>
+              </button>
+            );
+          })}
+        </div>
+        <p className="active-character-note">
+          {activePlayer
+            ? `Selecciona el personaje de ${nameOf(players, activePlayer)} (${slot + 1}.º puesto)`
+            : "Selecciona primero el podio"}
         </p>
         <label className="search">
           <Search size={18} />
           <input
+            aria-label="Buscar luchador"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Buscar entre 86 luchadores…"
-            aria-label="Buscar luchador"
           />
         </label>
         {!query && quick.length > 0 && (
@@ -262,8 +406,8 @@ export function WinForm({
           </>
         )}
         <p className="section-label">
-          {query ? `${visible.length} resultados` : "Plantel completo"}{" "}
-          <span>Retratos oficiales · plantel completo</span>
+          {query ? `${visible.length} resultados` : "Plantel completo"}
+          <span>Retratos oficiales</span>
         </p>
         <div className="fighter-grid roster-grid">
           {visible.map((f) => tile(f.id))}
@@ -285,17 +429,17 @@ export function WinForm({
         )}
         <div className="modal-footer">
           <span className="muted">
-            {character
-              ? fighterById.get(character)?.name
-              : "Selecciona un luchador"}
+            {characters
+              ? "Podio completo · 3 / 1 / 0"
+              : "Elige los tres personajes"}
           </span>
-          <button className="primary" disabled={!player || !character || busy}>
+          <button className="primary" disabled={!characters || busy}>
             <Trophy size={18} />
             {busy
               ? "Guardando…"
               : editing
                 ? "Guardar cambios"
-                : "Registrar victoria"}
+                : "Registrar partida"}
           </button>
         </div>
       </form>
@@ -364,6 +508,7 @@ export function Evolution({
   wins: Win[];
   players: Player[];
 }) {
+  const [metric, setMetric] = useState<"points" | "wins">("points");
   // At most 32 date buckets; cumulative counts retain all matches without rendering thousands of points.
   const days = [...new Set(wins.map((w) => w.localDate))].sort();
   const step = Math.max(1, Math.ceil(days.length / 32));
@@ -371,9 +516,11 @@ export function Evolution({
   const series = players.map((p) => {
     let n = 0;
     const counts = new Map<string, number>();
-    for (const w of wins)
-      if (w.playerId === p.id)
-        counts.set(w.localDate, (counts.get(w.localDate) ?? 0) + 1);
+    for (const w of wins) {
+      const value =
+        metric === "points" ? pointsFor(w, p.id) : w.playerId === p.id ? 1 : 0;
+      counts.set(w.localDate, (counts.get(w.localDate) ?? 0) + value);
+    }
     const totals = new Map<string, number>();
     for (const day of days) {
       n += counts.get(day) ?? 0;
@@ -385,8 +532,21 @@ export function Evolution({
   return (
     <section className="panel chart-panel">
       <div className="section-heading">
-        <h2>Evolución de victorias</h2>
-        <span className="muted">Acumuladas en el periodo</span>
+        <h2>Evolución de {metric === "points" ? "puntos" : "victorias"}</h2>
+        <div className="metric-switch">
+          <button
+            aria-pressed={metric === "points"}
+            onClick={() => setMetric("points")}
+          >
+            Puntos
+          </button>
+          <button
+            aria-pressed={metric === "wins"}
+            onClick={() => setMetric("wins")}
+          >
+            Victorias
+          </button>
+        </div>
       </div>
       {!wins.length ? (
         <Empty text="Registra tu primera partida para ver la evolución." />
@@ -395,7 +555,7 @@ export function Evolution({
           <svg
             viewBox="0 0 680 220"
             role="img"
-            aria-label={`Evolución acumulada. ${series.map((s) => `${s.p.name}: ${s.points.at(-1)} victorias`).join(". ")}`}
+            aria-label={`Evolución acumulada. ${series.map((s) => `${s.p.name}: ${s.points.at(-1)} ${metric === "points" ? "puntos" : "victorias"}`).join(". ")}`}
             className="chart"
           >
             {[0, 0.5, 1].map((t) => (
@@ -487,6 +647,25 @@ export function WinRow({
       <div className="win-detail">
         <strong>{nameOf(players, win.playerId)}</strong>
         <span>{fighterById.get(win.characterId)?.name}</span>
+        <div className="podium-history">
+          {win.placements ? (
+            win.placements.map((id, index) => {
+              const char = characterAt(win, index);
+              return (
+                <span className="podium-line" key={id}>
+                  {char && <Portrait id={char} />}
+                  <span>
+                    {index + 1}.º {nameOf(players, id)} ·{" "}
+                    {char ? fighterById.get(char)?.name : "Personaje pendiente"}
+                  </span>
+                  <b>{[3, 1, 0][index]} pts</b>
+                </span>
+              );
+            })
+          ) : (
+            <span>3 puntos al ganador · podio pendiente</span>
+          )}
+        </div>
       </div>
       <div className="win-date">
         <span>{dateLabel(win.localDate)}</span>
@@ -525,6 +704,10 @@ export function CharacterStat({
   onFavorite: () => void;
 }) {
   const characterWins = wins.filter((w) => w.characterId === id);
+  const entries = wins
+    .flatMap(matchEntries)
+    .filter((e) => e.characterId === id);
+  const totalPoints = entries.reduce((n, e) => n + e.points, 0);
   return (
     <article className="character-stat">
       <div className="character-stat-top">
@@ -545,6 +728,9 @@ export function CharacterStat({
           </strong>
         </div>
       </div>
+      <p className="character-points">
+        {totalPoints} puntos · {entries.length} participaciones conocidas
+      </p>
       <div className="character-breakdown">
         {players.map((p) => {
           const n = characterWins.filter((w) => w.playerId === p.id).length;
@@ -572,6 +758,20 @@ export function CharacterStat({
                 </small>
               </strong>
             </div>
+          );
+        })}
+      </div>
+      <div className="character-positions">
+        {players.map((p) => {
+          const rows = entries.filter((e) => e.playerId === p.id);
+          return (
+            <p key={p.id}>
+              {p.name}: {rows.reduce((n, e) => n + e.points, 0)} pts ·{" "}
+              {rows.filter((e) => e.position === 1).length}/
+              {rows.filter((e) => e.position === 2).length}/
+              {rows.filter((e) => e.position === 3).length}{" "}
+              <small>(1.º/2.º/3.º)</small>
+            </p>
           );
         })}
       </div>

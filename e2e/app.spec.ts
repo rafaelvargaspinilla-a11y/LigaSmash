@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { test, expect } from "@playwright/test";
 async function setup(page: import("@playwright/test").Page) {
   await page.goto("./");
@@ -21,16 +22,35 @@ async function add(
     .getByRole("button", { name: "Inicio", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "Registrar victoria", exact: true })
+    .getByRole("button", { name: "Registrar partida", exact: true })
     .click();
   const dialog = page.getByRole("dialog", {
-    name: "¿Quién se lleva la victoria?",
+    name: "Registrar partida",
   });
   await dialog.getByRole("button", { name: player, exact: true }).click();
+  await dialog
+    .getByRole("button", {
+      name: `Segundo: ${player === "Carlos" ? "Rafa" : "Carlos"}`,
+      exact: true,
+    })
+    .click();
   await dialog.getByLabel("Buscar luchador").fill(fighter);
   await dialog.getByRole("button", { name: fighter, exact: true }).click();
+  for (const [slot, name] of [
+    [2, "Link"],
+    [3, "Kirby"],
+  ] as const) {
+    await dialog
+      .getByRole("button", {
+        name: `Personaje del puesto ${slot}`,
+        exact: true,
+      })
+      .click();
+    await dialog.getByLabel("Buscar luchador").fill(name);
+    await dialog.getByRole("button", { name, exact: true }).click();
+  }
   await dialog
-    .getByRole("button", { name: "Registrar victoria", exact: true })
+    .getByRole("button", { name: "Registrar partida", exact: true })
     .click();
   await expect(dialog).toBeHidden();
 }
@@ -42,7 +62,7 @@ test("mobile: registro, recarga, edición, eliminación y deshacer", async ({
     page.getByText("La arena está lista. Registra vuestra primera victoria."),
   ).toBeVisible();
   await add(page);
-  await expect(page.getByRole("status")).toContainText("¡Victoria registrada!");
+  await expect(page.getByRole("status")).toContainText("¡Partida registrada!");
   await page.reload();
   await expect(page.locator(".win-row")).toHaveCount(1);
   await expect(
@@ -55,6 +75,12 @@ test("mobile: registro, recarga, edición, eliminación y deshacer", async ({
   await page.getByRole("button", { name: /Editar partida de/ }).click();
   const edit = page.getByRole("dialog", { name: "Editar partida" });
   await edit.getByRole("button", { name: "Carlos", exact: true }).click();
+  await edit
+    .getByRole("button", { name: "Segundo: Rafa", exact: true })
+    .click();
+  await edit
+    .getByRole("button", { name: "Personaje del puesto 1", exact: true })
+    .click();
   await edit.getByLabel("Buscar luchador").fill("Sora");
   await edit.getByRole("button", { name: "Sora", exact: true }).click();
   await edit.getByLabel("Fecha y hora local").fill("2026-10-13T14:15");
@@ -271,7 +297,7 @@ test("móvil: campos sin auto-zoom y registro solo en Inicio", async ({
       .getByRole("button", { name: section, exact: true })
       .click();
     await expect(
-      page.getByRole("button", { name: "Registrar victoria", exact: true }),
+      page.getByRole("button", { name: "Registrar partida", exact: true }),
     ).toHaveCount(0);
     await controls();
   }
@@ -282,7 +308,7 @@ test("móvil: campos sin auto-zoom y registro solo en Inicio", async ({
     .getByRole("button", { name: "Inicio", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "Registrar victoria", exact: true })
+    .getByRole("button", { name: "Registrar partida", exact: true })
     .click();
   await controls();
   await page
@@ -305,7 +331,7 @@ test("plantel completo con retratos locales, sin formularios de nombres", async 
 }) => {
   await setup(page);
   await page
-    .getByRole("button", { name: "Registrar victoria", exact: true })
+    .getByRole("button", { name: "Registrar partida", exact: true })
     .click();
   const dialog = page.getByRole("dialog");
   const portraits = dialog.locator(".roster-grid img");
@@ -331,4 +357,88 @@ test("plantel completo con retratos locales, sin formularios de nombres", async 
     page.getByRole("heading", { name: "Vuestra arena." }),
   ).toBeVisible();
   await expect(page.getByLabel("Jugador 1")).toHaveCount(0);
+});
+
+test("podio, personajes y puntos persisten y se editan juntos", async ({
+  page,
+}) => {
+  await setup(page);
+  await add(page, "Rafa", "Mario");
+  await expect(
+    page
+      .locator(".ranking-card")
+      .filter({ has: page.getByRole("heading", { name: "Rafa", exact: true }) })
+      .locator(".player-points"),
+  ).toContainText("3");
+  await expect(
+    page
+      .locator(".ranking-card")
+      .filter({
+        has: page.getByRole("heading", { name: "Carlos", exact: true }),
+      })
+      .locator(".player-points"),
+  ).toContainText("1");
+  await page.reload();
+  await expect(page.locator(".win-row")).toContainText("1.º Rafa · Mario");
+  await expect(page.locator(".win-row")).toContainText("2.º Carlos · Link");
+  await expect(page.locator(".win-row")).toContainText("3.º Andrés · Kirby");
+  await page.getByRole("button", { name: "Abrir ajustes" }).click();
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Exportar JSON" }).click();
+  const backup = JSON.parse(
+    readFileSync((await (await download).path())!, "utf8"),
+  );
+  expect(backup.schemaVersion).toBe(2);
+  expect(backup.wins[0].placements).toEqual(["p1", "p2", "p3"]);
+  expect(backup.wins[0].characters).toEqual(["01", "03", "06"]);
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Cerrar", exact: true })
+    .click();
+  await page
+    .getByRole("navigation", { name: "Navegación principal" })
+    .getByRole("button", { name: "Estadísticas", exact: true })
+    .click();
+  await expect(
+    page.getByRole("img", { name: /Evolución acumulada/ }),
+  ).toHaveAttribute("aria-label", /Carlos: 1 puntos/);
+  await page
+    .locator(".metric-switch")
+    .getByRole("button", { name: "Victorias", exact: true })
+    .click();
+  await expect(
+    page.getByRole("img", { name: /Evolución acumulada/ }),
+  ).toHaveAttribute("aria-label", /Carlos: 0 victorias/);
+  await page
+    .getByRole("navigation", { name: "Navegación principal" })
+    .getByRole("button", { name: "Historial", exact: true })
+    .click();
+  await page
+    .getByRole("combobox", { name: "Luchador", exact: true })
+    .selectOption("03");
+  await expect(page.locator(".win-row")).toHaveCount(1);
+  await page
+    .getByRole("combobox", { name: "Luchador", exact: true })
+    .selectOption("");
+  await page.getByRole("button", { name: /Editar partida de/ }).click();
+  const form = page.getByRole("dialog", { name: "Editar partida" });
+  await form.getByRole("button", { name: "Carlos", exact: true }).click();
+  await form
+    .getByRole("button", { name: "Segundo: Rafa", exact: true })
+    .click();
+  await form
+    .getByRole("button", { name: "Guardar cambios", exact: true })
+    .click();
+  await expect(page.locator(".win-row")).toContainText("1.º Carlos · Link");
+  await expect(page.locator(".win-row")).toContainText("2.º Rafa · Mario");
+  await page.reload();
+  await expect(
+    page
+      .locator(".ranking-card")
+      .filter({
+        has: page.getByRole("heading", { name: "Carlos", exact: true }),
+      })
+      .locator(".player-points"),
+  ).toContainText("3");
+  await expect(page.locator(".win-row")).toContainText("3.º Andrés · Kirby");
 });

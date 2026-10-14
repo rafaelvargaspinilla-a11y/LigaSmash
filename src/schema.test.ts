@@ -1,6 +1,7 @@
 import { PGlite } from "@electric-sql/pglite";
 import { beforeAll, afterAll, it, expect } from "vitest";
 import schema from "../supabase/schema.sql?raw";
+import upgrade from "../supabase/points.sql?raw";
 import { makeWin, type Backup } from "./model";
 let pg: PGlite;
 const code = "a".repeat(64);
@@ -88,4 +89,98 @@ it("PostgreSQL: RPC privados, CAS y reintentos idempotentes", async () => {
   expect(read.acknowledged).toBe(true);
   expect(read.data.wins).toHaveLength(1);
   await pg.exec("reset role");
+});
+
+it("PostgreSQL: acepta podios 3/1/0 y bloquea duplicados y versiones antiguas", async () => {
+  const modern: Backup = {
+    ...data,
+    schemaVersion: 2,
+    wins: [
+      makeWin("p1", "01", new Date(), ["p1", "p2", "p3"], ["01", "13e", "82"]),
+    ],
+  };
+  const valid = async (value: unknown) =>
+    (
+      await pg.query<{ valid: boolean }>(
+        "select public.smash_valid_data($1::jsonb) as valid",
+        [JSON.stringify(value)],
+      )
+    ).rows[0].valid;
+  expect(await valid(modern)).toBe(true);
+  expect(
+    await valid({
+      ...modern,
+      wins: [{ ...modern.wins[0], characters: ["01", "999", "82"] }],
+    }),
+  ).toBe(false);
+  expect(
+    await valid({
+      ...modern,
+      wins: [{ ...modern.wins[0], characters: ["82", "13e", "01"] }],
+    }),
+  ).toBe(false);
+  expect(
+    await valid({
+      ...modern,
+      wins: [{ ...modern.wins[0], placements: ["p1", "p1", "p3"] }],
+    }),
+  ).toBe(false);
+  expect(
+    await valid({
+      ...modern,
+      wins: [{ ...modern.wins[0], placements: ["p2", "p1", "p3"] }],
+    }),
+  ).toBe(false);
+  expect(await valid({ ...modern, schemaVersion: 1 })).toBe(false);
+  const modernCode = "c".repeat(64);
+  await pg.exec("set role anon");
+  try {
+    await pg.query("select public.smash_create_group($1,$2::jsonb)", [
+      modernCode,
+      JSON.stringify(modern),
+    ]);
+    await expect(
+      pg.query("select public.smash_write_group($1,0,$2::jsonb,$3::uuid)", [
+        modernCode,
+        JSON.stringify(data),
+        crypto.randomUUID(),
+      ]),
+    ).rejects.toThrow("Client update required");
+    const read = (
+      await pg.query<{ state: { data: Backup } }>(
+        "select public.smash_read_group($1) as state",
+        [modernCode],
+      )
+    ).rows[0].state;
+    expect(read.data.wins[0].placements).toEqual(["p1", "p2", "p3"]);
+  } finally {
+    await pg.exec("reset role");
+  }
+});
+
+it("actualizar points.sql conserva grupos, revisiones, códigos y permisos", async () => {
+  const before = (
+    await pg.query<{ state: unknown }>(
+      "select public.smash_read_group($1) as state",
+      [code],
+    )
+  ).rows[0].state;
+  await pg.exec(upgrade);
+  await pg.exec(upgrade);
+  await pg.exec("set role anon");
+  try {
+    expect(
+      (
+        await pg.query<{ state: unknown }>(
+          "select public.smash_read_group($1) as state",
+          [code],
+        )
+      ).rows[0].state,
+    ).toEqual(before);
+    await expect(
+      pg.query("select * from public.smash_groups"),
+    ).rejects.toThrow();
+  } finally {
+    await pg.exec("reset role");
+  }
 });
