@@ -104,3 +104,43 @@ it("encola cambios compartidos en orden y en la misma transacción", async () =>
     await shared.delete();
   }
 });
+
+it("inicializa el trío fijo una vez sin crear partidas", async () => {
+  await db.players.clear();
+  await db.ensureFixedPlayers();
+  expect(await db.players.toArray()).toEqual([
+    { id: "p1", name: "Rafa" },
+    { id: "p2", name: "Carlos" },
+    { id: "p3", name: "Andrés" },
+  ]);
+  await db.ensureFixedPlayers();
+  expect(await db.wins.count()).toBe(0);
+  expect(await db.pending.count()).toBe(0);
+});
+it("conserva el orden existente de los jugadores y sus victorias al normalizar nombres", async () => {
+  await db.setupPlayers(["Carlos", "Andres", "Rafael"]);
+  const win = await db.addWin("p1", "01");
+  await db.ensureFixedPlayers();
+  expect((await db.players.toArray()).map((p) => p.name)).toEqual([
+    "Carlos",
+    "Andrés",
+    "Rafa",
+  ]);
+  expect(await db.wins.get(win.id)).toEqual(win);
+});
+it("migra los nombres de un grupo con un solo cambio pendiente", async () => {
+  const shared = new TrackerDB(`fixed-${crypto.randomUUID()}`, true);
+  try {
+    await shared.setupPlayers(["Ana", "Luis", "Sol"]);
+    await shared.pending.clear();
+    const win = await shared.addWin("p1", "01");
+    await shared.pending.clear();
+    await shared.ensureFixedPlayers();
+    await shared.ensureFixedPlayers();
+    expect(await shared.pending.count()).toBe(1);
+    expect((await shared.pending.toArray())[0].change.kind).toBe("players");
+    expect(await shared.wins.get(win.id)).toEqual(win);
+  } finally {
+    await shared.delete();
+  }
+});

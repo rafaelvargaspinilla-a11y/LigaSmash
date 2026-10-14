@@ -10,12 +10,7 @@ export default defineConfig({
     tailwind(),
     VitePWA({
       registerType: "prompt",
-      includeAssets: [
-        "icon.svg",
-        "icon-192.png",
-        "icon-512.png",
-        "characters/*.png",
-      ],
+      includeAssets: ["icon.svg", "icon-192.png", "icon-512.png"],
       manifest: {
         name: "Smash Tracker",
         short_name: "Smash Tracker",
@@ -41,7 +36,7 @@ export default defineConfig({
           },
         ],
       },
-      workbox: { globPatterns: ["**/*.{js,css,html,svg,png,webp}"] },
+      workbox: { globPatterns: ["**/*.{js,css,html,svg,png,jpg,jpeg,webp}"] },
     }),
   ],
 });

@@ -1,18 +1,19 @@
 import { test, expect } from "@playwright/test";
 async function setup(page: import("@playwright/test").Page) {
   await page.goto("./");
-  const form = page.getByRole("dialog", {
-    name: "Bienvenidos a vuestra arena",
-  });
-  await form.getByLabel("Jugador 1").fill("Ana");
-  await form.getByLabel("Jugador 2").fill("Luis");
-  await form.getByLabel("Jugador 3").fill("Sol");
-  await form.getByRole("button", { name: "¡Empezar a jugar!" }).click();
-  await expect(form).toBeHidden();
+  await expect(
+    page.getByRole("heading", { name: "Vuestra arena." }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("dialog", { name: "Bienvenidos a vuestra arena" }),
+  ).toHaveCount(0);
+  await expect(page.locator(".ranking-grid")).toContainText("Rafa");
+  await expect(page.locator(".ranking-grid")).toContainText("Carlos");
+  await expect(page.locator(".ranking-grid")).toContainText("Andrés");
 }
 async function add(
   page: import("@playwright/test").Page,
-  player = "Ana",
+  player = "Rafa",
   fighter = "Mario",
 ) {
   await page
@@ -45,7 +46,7 @@ test("mobile: registro, recarga, edición, eliminación y deshacer", async ({
   await page.reload();
   await expect(page.locator(".win-row")).toHaveCount(1);
   await expect(
-    page.locator(".ranking-card").filter({ hasText: "Ana" }),
+    page.locator(".ranking-card").filter({ hasText: "Rafa" }),
   ).toContainText("100");
   await page
     .getByRole("navigation", { name: "Navegación principal" })
@@ -53,12 +54,12 @@ test("mobile: registro, recarga, edición, eliminación y deshacer", async ({
     .click();
   await page.getByRole("button", { name: /Editar partida de/ }).click();
   const edit = page.getByRole("dialog", { name: "Editar partida" });
-  await edit.getByRole("button", { name: "Luis", exact: true }).click();
+  await edit.getByRole("button", { name: "Carlos", exact: true }).click();
   await edit.getByLabel("Buscar luchador").fill("Sora");
   await edit.getByRole("button", { name: "Sora", exact: true }).click();
   await edit.getByLabel("Fecha y hora local").fill("2026-10-13T14:15");
   await edit.getByRole("button", { name: "Guardar cambios" }).click();
-  await expect(page.locator(".win-row")).toContainText("Luis");
+  await expect(page.locator(".win-row")).toContainText("Carlos");
   await expect(page.locator(".win-row")).toContainText("Sora");
   await page
     .getByRole("button", { name: "Eliminar partida", exact: true })
@@ -76,7 +77,7 @@ test("mobile: registro, recarga, edición, eliminación y deshacer", async ({
     .getByRole("button", { name: "Eliminar partida", exact: true })
     .click();
   await expect(page.locator(".win-row")).toHaveCount(0);
-  await add(page, "Sol", "Daisy");
+  await add(page, "Andrés", "Daisy");
   await expect(page.locator(".win-row")).toHaveCount(1);
   await page.getByRole("button", { name: "Deshacer" }).click();
   await expect(page.locator(".win-row")).toHaveCount(0);
@@ -91,7 +92,7 @@ test("exportación e importación sin duplicados; nombres y favoritos persistent
   page,
 }) => {
   await setup(page);
-  await add(page, "Ana", "Lucina");
+  await add(page, "Rafa", "Lucina");
   await page
     .getByRole("navigation", { name: "Navegación principal" })
     .getByRole("button", { name: "Personajes" })
@@ -107,8 +108,10 @@ test("exportación e importación sin duplicados; nombres y favoritos persistent
   ).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "Abrir ajustes" }).click();
   const settings = page.getByRole("dialog", { name: "Ajustes de la arena" });
-  await settings.getByLabel("Jugador 1").fill("Ana nueva");
-  await settings.getByRole("button", { name: "Guardar nombres" }).click();
+  await expect(
+    settings.getByRole("button", { name: "Guardar nombres" }),
+  ).toHaveCount(0);
+  await expect(settings).toContainText("Rafa · Carlos · Andrés");
   const download = page.waitForEvent("download");
   await settings.getByRole("button", { name: "Exportar JSON" }).click();
   const file = await download;
@@ -128,13 +131,13 @@ test("exportación e importación sin duplicados; nombres y favoritos persistent
     .getByRole("navigation", { name: "Navegación principal" })
     .getByRole("button", { name: "Personajes" })
     .click();
-  await expect(page.locator(".favorite-players")).toContainText("Ana nueva");
+  await expect(page.locator(".favorite-players")).toContainText("Rafa");
   await page
     .getByRole("navigation", { name: "Navegación principal" })
     .getByRole("button", { name: "Historial" })
     .click();
   await expect(page.locator(".win-row")).toHaveCount(1);
-  await expect(page.locator(".win-row")).toContainText("Ana nueva");
+  await expect(page.locator(".win-row")).toContainText("Rafa");
   await page.getByLabel("Archivo de copia de seguridad").setInputFiles({
     name: "bad.json",
     mimeType: "application/json",
@@ -164,7 +167,7 @@ test("PWA precacheada funciona y registra victorias sin conexión", async ({
   await expect(
     page.getByRole("heading", { name: "Vuestra arena." }),
   ).toBeVisible();
-  await add(page, "Sol", "Sora");
+  await add(page, "Andrés", "Sora");
   await page.reload();
   await expect(page.locator(".win-row")).toHaveCount(1);
   await expect(page.locator(".win-row")).toContainText("Sora");
@@ -173,8 +176,8 @@ test("PWA precacheada funciona y registra victorias sin conexión", async ({
 test("desktop: empate, filtro vacío y gráfico accesible", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await setup(page);
-  await add(page, "Ana");
-  await add(page, "Luis", "Daisy");
+  await add(page, "Rafa");
+  await add(page, "Carlos", "Daisy");
   await expect(page.getByText("Liderato compartido")).toBeVisible();
   await expect(page.locator(".leader-tag")).toHaveCount(2);
   await page
@@ -218,9 +221,9 @@ test("miles de partidas: totales correctos e historial paginado", async ({
     schemaVersion: 1,
     exportedAt: new Date().toISOString(),
     players: [
-      { id: "p1", name: "Ana" },
-      { id: "p2", name: "Luis" },
-      { id: "p3", name: "Sol" },
+      { id: "p1", name: "Rafa" },
+      { id: "p2", name: "Carlos" },
+      { id: "p3", name: "Andrés" },
     ],
     wins,
     favorites: [],
@@ -252,7 +255,7 @@ test("miles de partidas: totales correctos e historial paginado", async ({
 test("móvil: campos sin auto-zoom y registro solo en Inicio", async ({
   page,
 }) => {
-  await page.goto("./");
+  await setup(page);
   const controls = async () => {
     const fields = page.locator(
       "input:visible,select:visible,textarea:visible",
@@ -262,15 +265,6 @@ test("móvil: campos sin auto-zoom y registro solo en Inicio", async ({
         await field.evaluate((e) => parseFloat(getComputedStyle(e).fontSize)),
       ).toBeGreaterThanOrEqual(16);
   };
-  await page
-    .getByRole("dialog", { name: "Bienvenidos a vuestra arena" })
-    .waitFor();
-  await controls();
-  const form = page.getByRole("dialog");
-  await form.getByLabel("Jugador 1").fill("Ana");
-  await form.getByLabel("Jugador 2").fill("Luis");
-  await form.getByLabel("Jugador 3").fill("Sol");
-  await form.getByRole("button", { name: "¡Empezar a jugar!" }).click();
   for (const section of ["Personajes", "Historial", "Estadísticas"]) {
     await page
       .getByRole("navigation", { name: "Navegación principal" })
@@ -304,4 +298,37 @@ test("móvil: campos sin auto-zoom y registro solo en Inicio", async ({
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
+});
+
+test("plantel completo con retratos locales, sin formularios de nombres", async ({
+  page,
+}) => {
+  await setup(page);
+  await page
+    .getByRole("button", { name: "Registrar victoria", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog");
+  const portraits = dialog.locator(".roster-grid img");
+  await expect(portraits).toHaveCount(86);
+  await expect
+    .poll(async () =>
+      portraits.evaluateAll(
+        (images) =>
+          images.filter(
+            (i) =>
+              !(i as HTMLImageElement).complete ||
+              !(i as HTMLImageElement).naturalWidth,
+          ).length,
+      ),
+    )
+    .toBe(0);
+  await expect(
+    dialog.getByText("Retrato pendiente", { exact: true }),
+  ).toHaveCount(0);
+  await dialog.getByRole("button", { name: "Cerrar", exact: true }).click();
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Vuestra arena." }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Jugador 1")).toHaveCount(0);
 });

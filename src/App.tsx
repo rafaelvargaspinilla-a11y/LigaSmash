@@ -37,7 +37,6 @@ import {
 } from "./model";
 import {
   Modal,
-  PlayersForm,
   WinForm,
   PeriodFilter,
   Evolution,
@@ -85,8 +84,13 @@ export default function App() {
   );
   const [dbError, setDbError] = useState("");
   useEffect(() => {
-    db.open().catch((e) => setDbError(errorText(e)));
-  }, []);
+    const target = db;
+    target
+      .open()
+      .then(() => target.ensureFixedPlayers())
+      .then(() => synchronize())
+      .catch((e) => setDbError(errorText(e)));
+  }, [syncState.databaseName]);
   const [page, setPage] = useState<Page>("home");
   const [period, setPeriod] = useState<Period>("all");
   const [custom, setCustom] = useState<[string, string]>([
@@ -260,7 +264,11 @@ export default function App() {
         </button>
       </main>
     );
-  if (!data || data.databaseName !== syncState.databaseName)
+  if (
+    !data ||
+    data.databaseName !== syncState.databaseName ||
+    data.players.length !== 3
+  )
     return (
       <main className="onboarding">
         <h1>Smash Tracker</h1>
@@ -767,34 +775,6 @@ export default function App() {
           </button>
         ))}
       </nav>
-      {players.length !== 3 && pendingImport === undefined && (
-        <Modal
-          title="Bienvenidos a vuestra arena"
-          dismissible={false}
-          onClose={() => {}}
-        >
-          <PlayersForm
-            players={players}
-            onSaved={() =>
-              notify("Jugadores listos. ¡Que empiece la rivalidad!")
-            }
-            onError={setError}
-          />
-          <p className="muted small-note">¿Ya tienes una copia?</p>
-          <button
-            className="secondary full"
-            onClick={() => fileRef.current?.click()}
-          >
-            <Upload size={17} />
-            Importar copia de seguridad
-          </button>
-          <SharedSettings
-            allowCreate={false}
-            onError={setError}
-            onNotice={notify}
-          />
-        </Modal>
-      )}
       {(showWin || editing) && players.length === 3 && (
         <WinForm
           players={players}
@@ -812,13 +792,10 @@ export default function App() {
       {settings && pendingImport === undefined && (
         <Modal title="Ajustes de la arena" onClose={() => setSettings(false)}>
           <h3>Los tres jugadores</h3>
-          <PlayersForm
-            players={players}
-            onSaved={() =>
-              notify("Nombres actualizados sin perder estadísticas.")
-            }
-            onError={setError}
-          />
+          <p className="muted">
+            {players.map((p) => p.name).join(" · ")}. Siempre los mismos tres
+            jugadores.
+          </p>
           <SharedSettings onError={setError} onNotice={notify} />
           <div className="settings-section">
             <h3>Tus datos, bajo tu control</h3>
@@ -857,9 +834,8 @@ export default function App() {
           <div className="settings-section">
             <h3>Retratos de luchadores</h3>
             <p className="muted">
-              Esta versión incluye el plantel completo y espacios para retratos.
-              Consulta README y public/characters/README.md para incorporar
-              imágenes autorizadas. No se utilizan imágenes inventadas.
+              El plantel completo incluye retratos oficiales guardados dentro de
+              la aplicación para utilizarlos también sin conexión.
             </p>
           </div>
         </Modal>

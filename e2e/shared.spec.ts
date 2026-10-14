@@ -68,12 +68,9 @@ test("dos dispositivos: grupo privado, cambios offline, fusión y respuesta perd
     await bind(context, true);
     await bind(second);
     await page.goto("./");
-    const onboarding = page.getByRole("dialog", {
-      name: "Bienvenidos a vuestra arena",
-    });
-    for (const [i, name] of ["Ana", "Luis", "Sol"].entries())
-      await onboarding.getByLabel(`Jugador ${i + 1}`).fill(name);
-    await onboarding.getByRole("button", { name: "¡Empezar a jugar!" }).click();
+    await expect(
+      page.getByRole("heading", { name: "Vuestra arena." }),
+    ).toBeVisible();
     const add = async (p: typeof page, player: string, fighter: string) => {
       await p
         .getByRole("button", { name: "Registrar victoria", exact: true })
@@ -89,7 +86,7 @@ test("dos dispositivos: grupo privado, cambios offline, fusión y respuesta perd
         .click();
       await expect(form).toBeHidden();
     };
-    await add(page, "Ana", "Mario");
+    await add(page, "Rafa", "Mario");
     await page.getByRole("button", { name: "Abrir ajustes" }).click();
     await page
       .getByRole("button", { name: "Crear grupo con estos datos" })
@@ -108,25 +105,30 @@ test("dos dispositivos: grupo privado, cambios offline, fusión y respuesta perd
       .click();
     const b = await second.newPage();
     await b.goto("./");
+    await b.getByRole("button", { name: "Abrir ajustes" }).click();
     await b.getByLabel("Código privado del grupo", { exact: true }).fill(code);
     await b.getByRole("button", { name: "Unirme al grupo" }).click();
+    await b
+      .getByRole("dialog", { name: "Ajustes de la arena" })
+      .getByRole("button", { name: "Cerrar", exact: true })
+      .click();
     await expect(b.locator(".win-row")).toHaveCount(1);
-    await add(b, "Luis", "Daisy");
+    await add(b, "Carlos", "Daisy");
     await expect(page.locator(".win-row")).toHaveCount(2, { timeout: 15000 });
     offlineA = true;
     await context.setOffline(true);
-    await add(page, "Sol", "Sora");
+    await add(page, "Andrés", "Sora");
     await page.reload();
     await expect(page.locator(".win-row")).toHaveCount(3);
     await expect(b.locator(".win-row")).toHaveCount(2);
-    await add(b, "Ana", "Kirby");
+    await add(b, "Rafa", "Kirby");
     await expect(b.locator(".win-row")).toHaveCount(3);
     offlineA = false;
     await context.setOffline(false);
     await expect(page.locator(".win-row")).toHaveCount(4, { timeout: 15000 });
     await expect(b.locator(".win-row")).toHaveCount(4, { timeout: 15000 });
     dropNextReply = true;
-    await add(b, "Luis", "Cloud");
+    await add(b, "Carlos", "Cloud");
     await expect(page.locator(".win-row")).toHaveCount(5, { timeout: 15000 });
     await b.reload();
     await expect(b.locator(".win-row")).toHaveCount(5);

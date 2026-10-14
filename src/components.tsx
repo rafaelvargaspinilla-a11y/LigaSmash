@@ -40,7 +40,7 @@ export function Portrait({
     <span className={`portrait ${large ? "large" : ""}`}>
       {!failed ? (
         <img
-          src={`${import.meta.env.BASE_URL}characters/${id}.png`}
+          src={`${import.meta.env.BASE_URL}characters/${id}.${["51", "52", "53"].includes(id) ? "jpg" : "png"}`}
           alt={fighterById.get(id)?.name ?? ""}
           onError={() => setFailed(true)}
         />
@@ -132,70 +132,6 @@ export function Modal({
         {children}
       </div>
     </div>
-  );
-}
-export function PlayersForm({
-  players,
-  onSaved,
-  onError,
-}: {
-  players: Player[];
-  onSaved: () => void;
-  onError: (s: string) => void;
-}) {
-  const [names, setNames] = useState(
-    [0, 1, 2].map((i) => players.find((p) => p.id === `p${i + 1}`)?.name ?? ""),
-  );
-  const [busy, setBusy] = useState(false);
-  return (
-    <form
-      onSubmit={async (e) => {
-        e.preventDefault();
-        setBusy(true);
-        try {
-          await db.setupPlayers(names);
-          onSaved();
-        } catch (e) {
-          onError(errorText(e));
-        } finally {
-          setBusy(false);
-        }
-      }}
-    >
-      <p className="muted">
-        Siempre sois los mismos tres. Cambiar los nombres conserva todas las
-        estadísticas.
-      </p>
-      <div className="form-stack">
-        {names.map((name, i) => (
-          <label key={i}>
-            Jugador {i + 1}
-            <input
-              autoComplete="off"
-              required
-              maxLength={40}
-              value={name}
-              placeholder={
-                ["Tu nombre", "Tu primer rival", "Tu segundo rival"][i]
-              }
-              onChange={(e) =>
-                setNames(names.map((n, j) => (j === i ? e.target.value : n)))
-              }
-            />
-          </label>
-        ))}
-      </div>
-      <button
-        className="primary full"
-        disabled={busy || names.some((n) => !n.trim())}
-      >
-        {busy
-          ? "Guardando…"
-          : players.length
-            ? "Guardar nombres"
-            : "¡Empezar a jugar!"}
-      </button>
-    </form>
   );
 }
 export function WinForm({
@@ -327,7 +263,7 @@ export function WinForm({
         )}
         <p className="section-label">
           {query ? `${visible.length} resultados` : "Plantel completo"}{" "}
-          <span>Retratos pendientes de añadir</span>
+          <span>Retratos oficiales · plantel completo</span>
         </p>
         <div className="fighter-grid roster-grid">
           {visible.map((f) => tile(f.id))}

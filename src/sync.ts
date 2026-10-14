@@ -136,6 +136,7 @@ async function installRemote(target: TrackerDB, remote: RemoteState) {
       await target.players.bulkPut(merged.players);
       await target.wins.clear();
       await target.wins.bulkPut(merged.wins);
+      await target.ensureFixedPlayers();
     },
   );
 }

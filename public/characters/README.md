@@ -1,10 +1,12 @@
-# Retratos autorizados de Super Smash Bros. Ultimate
+# Retratos de Super Smash Bros. Ultimate
 
-Aporta un PNG por selección, con el nombre indicado abajo, en esta carpeta. Se recomienda PNG transparente de 256–512 píxeles y tamaño moderado. Deben ser imágenes reales del luchador en **Super Smash Bros. Ultimate**, no de otros juegos. No hay descargas externas en ejecución.
+Se incluyen los 86 retratos reales del plantel, guardados localmente. Hay 83 imágenes compactas del [sitio oficial de Nintendo](https://www.smashbros.com/es_ES/fighter/index.html) y tres retratos individuales de Mii de [marcrd/smash-ultimate-assets](https://github.com/marcrd/smash-ultimate-assets/tree/master/portraits/small).
 
-Consulta el [plantel oficial de Nintendo](https://www.smashbros.com/es_ES/fighter/index.html) para comprobar identidad y aspecto; que un recurso sea público no concede licencia de redistribución. Obtén autorización o utiliza una fuente cuya licencia permita tu uso concreto, conservando atribución y comprobante de licencia. No se ha verificado ninguna licencia que permita incluir retratos oficiales en este repositorio, por eso el usuario debe aportar recursos autorizados.
+Los Echo mantienen imágenes e IDs separados. Pyra/Mythra usa el retrato conjunto oficial. Entrenador Pokémon usa la imagen de su selección. Los tres tipos de Mii tienen retratos individuales: Luchador, Espadachín y Tirador. El archivo comunitario nombra sus imágenes `.png` pero sus bytes originales son JPEG, por lo que aquí se conservan sin convertir con extensión `.jpg`.
 
-Para Entrenador Pokémon usa una imagen autorizada que represente la selección del entrenador/equipo; para Pyra/Mythra usa una imagen autorizada conjunta. La selección y las estadísticas agrupan estas transformaciones como el juego. Puedes sustituir una imagen sin cambiar ningún ID ni dato guardado. Después de incorporar recursos, vuelve a compilar: la PWA los incluirá para uso offline.
+[sources.json](sources.json) contiene el origen exacto, dimensiones, tamaño y SHA-256 de cada archivo. `python scripts/download-portraits.py`, ejecutado desde la raíz del proyecto, permite repetir la descarga de todos los originales y verificar su formato. Las imágenes no se editan ni se generan artificialmente; la interfaz las encuadra con CSS.
+
+Las ilustraciones y los personajes pertenecen a Nintendo y a sus respectivos titulares. La atribución documenta su origen; no declara que estas imágenes sean de dominio público ni transfiere derechos. Proyecto personal no oficial para registrar partidas entre amigos.
 
 | Archivo     | Selección              |
 | ----------- | ---------------------- |
@@ -61,9 +63,9 @@ Para Entrenador Pokémon usa una imagen autorizada que represente la selección 
 | `48.png`    | Estela y Destello      |
 | `49.png`    | Little Mac             |
 | `50.png`    | Greninja               |
-| `51.png`    | Luchador Mii           |
-| `52.png`    | Espadachín Mii         |
-| `53.png`    | Tirador Mii            |
+| `51.jpg`    | Luchador Mii           |
+| `52.jpg`    | Espadachín Mii         |
+| `53.jpg`    | Tirador Mii            |
 | `54.png`    | Palutena               |
 | `55.png`    | Pac-Man                |
 | `56.png`    | Daraen                 |
@@ -95,13 +97,6 @@ Para Entrenador Pokémon usa una imagen autorizada que represente la selección 
 | `81.png`    | Kazuya                 |
 | `82.png`    | Sora                   |
 
-## Añadir fotos desde GitHub (para todos los dispositivos)
+## Sustituir un retrato
 
-1. Prepara los retratos que tengas permiso para publicar en formato PNG. Si son JPG/WebP, conviértelos a PNG; no basta con cambiar la extensión.
-2. Renombra cada archivo según la tabla: `01.png` para Mario, `13e.png` para Daisy, `82.png` para Sora, etc.
-3. Abre [esta carpeta en GitHub](https://github.com/rafaelvargaspinilla-a11y/LigaSmash/tree/main/public/characters) y selecciona **Add file → Upload files**.
-4. Arrastra los archivos y confirma **Commit changes** en `main`.
-5. Espera a que **Publish Smash Tracker** termine en verde en Actions. Los retratos estarán disponibles para todos los dispositivos y se incluirán en la copia offline.
-6. Si una PWA abierta conserva la versión anterior, cierra todas sus ventanas y vuelve a abrirla. No borres el almacenamiento del sitio.
-
-Se pueden incorporar pocos retratos primero y completar el resto después. Las partidas y estadísticas no cambian al añadir o sustituir imágenes.
+Usa el nombre y el formato de la tabla. Sube el archivo en esta carpeta mediante GitHub → Add file → Upload files y confirma el cambio en main. El workflow publicará la nueva imagen para todos. Para actualizar una PWA abierta, cierra sus ventanas y vuelve a abrirla; no borres el almacenamiento del sitio. Sustituir una imagen no cambia las partidas.

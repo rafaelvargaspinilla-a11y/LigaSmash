@@ -5,6 +5,35 @@ export interface Player {
   id: PlayerId;
   name: string;
 }
+export const fixedPlayers: Player[] = [
+  { id: "p1", name: "Rafa" },
+  { id: "p2", name: "Carlos" },
+  { id: "p3", name: "Andrés" },
+];
+export function fixedPlayerNames(current: Player[]): Player[] {
+  // Canonicalize spelling while preserving existing assignments and statistics.
+  const canonical = (name: string) => {
+    const value = name
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim()
+      .toLowerCase();
+    return value === "rafa" || value === "rafael"
+      ? "Rafa"
+      : value === "carlos"
+        ? "Carlos"
+        : value === "andres"
+          ? "Andrés"
+          : undefined;
+  };
+  const mapped = current.map((p) => ({ ...p, name: canonical(p.name) }));
+  if (
+    mapped.length === 3 &&
+    fixedPlayers.every((p) => mapped.some((c) => c.name === p.name))
+  )
+    return mapped as Player[];
+  return fixedPlayers.map((p) => ({ ...p }));
+}
 export interface Win {
   id: string;
   playerId: PlayerId;

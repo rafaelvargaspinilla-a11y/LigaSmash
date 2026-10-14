@@ -23,7 +23,7 @@ El destino configurado es `https://rafaelvargaspinilla-a11y.github.io/LigaSmash/
 
 ## 3. Compartir las partidas
 
-1. En el primer móvil, introduce los tres nombres y abre Ajustes → Grupo compartido → Crear grupo con estos datos.
+1. En el primer móvil, Rafa, Carlos y Andrés ya aparecen configurados. Abre Ajustes → Grupo compartido → Crear grupo con estos datos.
 2. Pulsa Copiar código y pásalo por un canal privado a tus amigos.
 3. En los otros móviles, abre la misma app y pega el código en Unirme al grupo. No crees un grupo nuevo en cada móvil.
 4. Registra una victoria y comprueba que aparece en el otro móvil en unos segundos.

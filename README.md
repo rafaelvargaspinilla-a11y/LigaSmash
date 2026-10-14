@@ -11,7 +11,7 @@ npm ci
 npm run dev
 ```
 
-Abre la dirección que indica Vite. Configura los tres nombres; selecciona ganador, luchador y **Registrar victoria**. Puedes marcar favoritos en Personajes. Los últimos luchadores usados aparecen primero al registrar. El aviso permite deshacer; Historial permite editar fecha/hora/ganador/luchador y eliminar previa confirmación. Los nombres se cambian en Ajustes sin perder registros.
+Abre la dirección que indica Vite. Rafa, Carlos y Andrés ya están configurados. Selecciona ganador, luchador y **Registrar victoria**. Puedes marcar favoritos en Personajes. Los últimos luchadores usados aparecen primero al registrar. El aviso permite deshacer; Historial permite editar fecha/hora/ganador/luchador y eliminar previa confirmación. No se solicita introducir nombres. Al actualizar, se mantienen los IDs y las victorias; si los tres nombres ya estaban asignados a otros IDs, se conserva esa asignación.
 
 ```sh
 npm test
@@ -54,9 +54,11 @@ En modo local, los datos pertenecen al navegador. En modo compartido, nombres y 
 
 Las copias llevan `schemaVersion: 1`. La importación valida jugadores, IDs, nombres, fechas, personajes y favoritos. Fusiona por ID, omite duplicados idénticos y cancela toda la transacción si un ID existente contiene datos diferentes. Conserva los nombres actuales y une favoritos. Una base vacía restaura también los nombres. Importa exclusivamente copias del mismo grupo de tres personas: los IDs son posiciones estables dentro de ese grupo. Límite de archivo: 30 MB. Nuevas versiones deben añadir migraciones Dexie y un validador explícito del esquema.
 
-## Retratos: recursos sustituibles
+## Retratos reales, guardados localmente
 
-No se distribuyen imágenes de Nintendo ni de terceros sin permiso verificado. Los espacios numerados son marcadores de recursos pendientes, **no** retratos ficticios ni imágenes generadas. La interfaz está preparada para cargar retratos reales locales. Consulta [public/characters/README.md](public/characters/README.md) para la lista completa de archivos que debe proporcionar un usuario con autorización. Si falta una imagen, sigue siendo posible seleccionar y registrar el luchador por nombre.
+La aplicación incluye los 86 retratos del plantel de Ultimate, incluidos los DLC y los tres tipos de Mii por separado. Se han descargado 83 retratos de la web oficial de Nintendo y los tres retratos individuales de Mii del archivo comunitario `marcrd/smash-ultimate-assets`. Son imágenes del videojuego, sin generación artificial. Entrenador Pokémon y Pyra/Mythra usan imágenes de sus selecciones conjuntas.
+
+Los originales compactos ocupan aproximadamente 5,7 MiB y se incluyen en la caché offline de la PWA. `public/characters/sources.json` registra URL de origen, formato, dimensiones y SHA-256 por selección. `scripts/download-portraits.py` reproduce la descarga conservando la verificación TLS y comprobando formatos. No se realizan peticiones a Nintendo durante el uso de la aplicación. Más detalles en [public/characters/README.md](public/characters/README.md).
 
 El plantel contiene 86 selecciones: los Echo tienen ID propio con sufijo `e`; Entrenador Pokémon agrupa Squirtle/Ivysaur/Charizard como una selección `33-35`; Pyra/Mythra es una selección intercambiable `79-80`. No se cuenta cada transformación como victoria independiente. Los tres tipos de Mii son entradas separadas; variantes cosméticas como Alex/Steve o héroes alternativos se agrupan bajo la misma selección. Los números proceden del plantel oficial; los nombres están localizados al español de España.
 

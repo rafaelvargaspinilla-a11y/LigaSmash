@@ -1,0 +1,690 @@
+{
+  "01": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/mario.png",
+    "file": "01.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 71478,
+    "sha256": "2add6a9100b1f4371d84074dcca3f874594ec28b3aee197a56d94c78e44c8c0b"
+  },
+  "02": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/donkey_kong.png",
+    "file": "02.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 66913,
+    "sha256": "eb004264597b1034d93ef497e3dadf696268f7260fae5e7303e89bfe4ff90915"
+  },
+  "03": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/link.png",
+    "file": "03.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 79434,
+    "sha256": "87d77bdc5409691e7455020b63cc62fe517a8b0deba45266ba607fc9821bc977"
+  },
+  "04": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/samus.png",
+    "file": "04.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 87806,
+    "sha256": "469bf3a99828b69091d0ea842d75109e3331904a1ab75a89c68955823c3f0ec7"
+  },
+  "04e": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/dark_samus.png",
+    "file": "04e.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 98896,
+    "sha256": "0887132d3bd37e02fbefda7299c2a6c2c05a139daf5f82d102e78bcd2df37858"
+  },
+  "05": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/yoshi.png",
+    "file": "05.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 45082,
+    "sha256": "170f279564dfea20b8de64d8a1ba7d71fd06cd7bed5913be748617850bf55266"
+  },
+  "06": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/kirby.png",
+    "file": "06.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 38869,
+    "sha256": "c5c35d15c424c083a99b2cb304f1b36dd82608fa5615555877a0c4641171d85e"
+  },
+  "07": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/fox.png",
+    "file": "07.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 94806,
+    "sha256": "096d8e30f8f892964783e52d33a83d14ec7fd91f33ad9f174ff34b9d78ff9bb4"
+  },
+  "08": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/pikachu.png",
+    "file": "08.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 39550,
+    "sha256": "d270b875dfa10b5323e8ff3c4a0abd20e78964490b4071aaf6d2ad1879eb7ef0"
+  },
+  "09": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/luigi.png",
+    "file": "09.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 56348,
+    "sha256": "d7049caa9cc20adea3049bfe18c15121eadf2967b0ceea8079bc9540f1f116f7"
+  },
+  "10": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/ness.png",
+    "file": "10.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 47780,
+    "sha256": "fea6fff9089c5ee0494f215b88b578f7fca57cbd86eb04aa0ef240c01949390c"
+  },
+  "11": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/captain_falcon.png",
+    "file": "11.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 69715,
+    "sha256": "37bc5fca863c89251f603ebd647ca81f52f329cddef966a321486539d79a19a0"
+  },
+  "12": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/purin.png",
+    "file": "12.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 48629,
+    "sha256": "618d46a19e832af413fb379c1f9c747827049c0f70641f4f6b31a29602225016"
+  },
+  "13": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/peach.png",
+    "file": "13.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 78027,
+    "sha256": "ea747527aab3cd34583eb1ff8f525ecadfc4f475b14bea35910d687ae85b0f5e"
+  },
+  "13e": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/daisy.png",
+    "file": "13e.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 72300,
+    "sha256": "694d1c951b4c693783e45c7e24e7b1f7aa5572b802afa51ceaa744ad5b5ffa93"
+  },
+  "14": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/koopa.png",
+    "file": "14.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 81389,
+    "sha256": "18201ba11d07db558e0d5cceae632c3d09ff81b5d2f80711444d54ae06cca7cc"
+  },
+  "15": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/ice_climber.png",
+    "file": "15.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 82751,
+    "sha256": "3aefff4577cda39c6d4e9249a4c9d69568f01e213e65286323b627b3a08372fc"
+  },
+  "16": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/sheik.png",
+    "file": "16.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 78330,
+    "sha256": "f430079dc05fcf0a1895f4aa3994897af162ffb23faa4e43379371f46984c362"
+  },
+  "17": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/zelda.png",
+    "file": "17.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 76799,
+    "sha256": "c7b41534f407327cb2010e69a221a3ff16adda0b02ef25bca068403d32c7b383"
+  },
+  "18": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/dr_mario.png",
+    "file": "18.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 57493,
+    "sha256": "d3f6f431908ead40fc22492fc27bac607e8c83aedaed6e8ac81536075140ba83"
+  },
+  "19": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/pichu.png",
+    "file": "19.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 35056,
+    "sha256": "2d43d703dce590a73aa3ed02a2f37fd62919c866e46ba8cbb497d24ca6325116"
+  },
+  "20": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/falco.png",
+    "file": "20.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 80742,
+    "sha256": "52c749d298e700675dea9390b59e210599fa3c972ed9980ee2a2050f125f25b2"
+  },
+  "21": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/marth.png",
+    "file": "21.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 72949,
+    "sha256": "4e90ef5b88dca7571af32c0e252b79760d467b40e68a4203e52ba4a1804a0931"
+  },
+  "21e": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/lucina.png",
+    "file": "21e.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 79502,
+    "sha256": "6e853355daca7f09899117a8d0b09b61c80f01fe80dc4af3abece49c76cea3fa"
+  },
+  "22": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/young_link.png",
+    "file": "22.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 75163,
+    "sha256": "cf56920884cd35fd6394d5ffa967c59073b2bfefa83d40e3cb932f1ffd925e40"
+  },
+  "23": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/ganondorf.png",
+    "file": "23.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 82717,
+    "sha256": "a8d941036c58d7fae764c1501062eee70f1fe73f2ca50ed18c7b58a46a765563"
+  },
+  "24": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/mewtwo.png",
+    "file": "24.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 46157,
+    "sha256": "2a895dc00bd9413344e2661f52a1ce15601ddbf93cde373f621ec0a3077098cc"
+  },
+  "25": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/roy.png",
+    "file": "25.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 79509,
+    "sha256": "9e1fce8d9b45814e5d97e2f550c7ee59a5fa3e10d856cb2c547229d651f96cc4"
+  },
+  "25e": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/chrom.png",
+    "file": "25e.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 67275,
+    "sha256": "83e100f641e738efafc6f1f1c7da7749a99d5ad953f7cb013370af1237e2c58b"
+  },
+  "26": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/mr_game_and_watch.png",
+    "file": "26.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 14216,
+    "sha256": "fbb0b5a68590c2f9cfad79d3af1b1044778e80289e2ed539ee5c27012c0d7cf6"
+  },
+  "27": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/meta_knight.png",
+    "file": "27.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 81760,
+    "sha256": "5c6f410371907d15bfc5af3c9b7a3ad7350ae3aa1b71dbcd133ad077f02f6bc4"
+  },
+  "28": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/pit.png",
+    "file": "28.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 80867,
+    "sha256": "cce5c766d5cf51f607b42cedad442ed6690da9fd711920789f1bc6dd4b1f7850"
+  },
+  "28e": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/black_pit.png",
+    "file": "28e.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 70974,
+    "sha256": "45767a0fa5ac4de72e8cf69cc9ac0658b0e3341e87cc78ef3223c2c62d9ec02d"
+  },
+  "29": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/zero_suit_samus.png",
+    "file": "29.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 71185,
+    "sha256": "55287586eb12e5ede6351d0437694408cff1c6932e9cb8688f9ef40974171945"
+  },
+  "30": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/wario.png",
+    "file": "30.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 71487,
+    "sha256": "5c88fd2d9bdcc88593cbcd6b7c439a18261df0811db85ce4e6b8fd0b4c45891f"
+  },
+  "31": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/snake.png",
+    "file": "31.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 75190,
+    "sha256": "3e97593c50a3d8095482bedc5813ca56b9673c77e7aadf847eef8656573e7b01"
+  },
+  "32": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/ike.png",
+    "file": "32.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 82111,
+    "sha256": "fb590f12ca8c934d29fda096abcbde08686d7304d1f1e99bd170cb2b3779cef4"
+  },
+  "33-35": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/pokemon_trainer.png",
+    "file": "33-35.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 53285,
+    "sha256": "d972f8cbeb7bd541efed399ed3607b362252170985d542d7401ed15c6df7cdaf"
+  },
+  "36": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/diddy_kong.png",
+    "file": "36.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 68718,
+    "sha256": "4a0adde7deaae40a529e6f55ab2d90bb5231b0dd6fba42612daf11bdbccbcf5c"
+  },
+  "37": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/lucas.png",
+    "file": "37.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 47997,
+    "sha256": "6ec6b7a3044bb73ef20b6daf949d88d6031e84c84942ea79fdbbd619e2236095"
+  },
+  "38": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/sonic.png",
+    "file": "38.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 72028,
+    "sha256": "10f98c392bc9b44093df9c9cdb86fb2d2be0a74ae98514e62c31d2e4f2e2c0ce"
+  },
+  "39": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/dedede.png",
+    "file": "39.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 66907,
+    "sha256": "a542487e1a64b09880cc5f1218a1ebce6872cfaf4c0184f9a9bba1f454593103"
+  },
+  "40": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/pikmin_and_olimar.png",
+    "file": "40.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 72508,
+    "sha256": "189708adcc4a4a4dcea14b5337fc4cfa7bb27c5295b1e3418a7fc262b00392ca"
+  },
+  "41": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/lucario.png",
+    "file": "41.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 77039,
+    "sha256": "fe5186c24c64ce873792c02468126869c916d51493c01f6f6a312b44d4b64af1"
+  },
+  "42": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/robot.png",
+    "file": "42.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 69116,
+    "sha256": "63aae0344a257844d2d172b08b616ce87a00f9e4ccd2de190091c2f809f1aa3e"
+  },
+  "43": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/toon_link.png",
+    "file": "43.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 64984,
+    "sha256": "dced2a9db62737070a5962f895b515f4e2d56003e1892d732958fab2425a0bd5"
+  },
+  "44": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/wolf.png",
+    "file": "44.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 77712,
+    "sha256": "3b8b18a2179958ba0412dc65db4d21195adb3ab8ba11d5feeeea0f9d9b374e79"
+  },
+  "45": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/murabito.png",
+    "file": "45.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 52129,
+    "sha256": "7d403c8f8012c6311835470544eefde339809272024b242d814c699f2c42e3e3"
+  },
+  "46": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/rockman.png",
+    "file": "46.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 65500,
+    "sha256": "b1b06608adb9b60fe303c3c8e31e2e43328352088358f15fbe402cca6af53fe3"
+  },
+  "47": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/wii_fit_trainer.png",
+    "file": "47.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 55939,
+    "sha256": "9bbcda5e79a8140ab25818a7a38c81dbc5c5a2ccede011cc4075f402dc7d6bf8"
+  },
+  "48": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/rosetta_and_chiko.png",
+    "file": "48.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 63254,
+    "sha256": "000b4d4de0c9fd4edea10c461bf62f5772ee825dc5af95a235c87fe488bb4ab3"
+  },
+  "49": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/little_mac.png",
+    "file": "49.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 68818,
+    "sha256": "0a71eeefcade90803e1c38a735dd73dcd40c97d4ca246b500b930df0a8658575"
+  },
+  "50": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/gekkouga.png",
+    "file": "50.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 51174,
+    "sha256": "780886d305c06cf4346564bccf2f31ed51cc2c5d996d8884a396e139bff3c838"
+  },
+  "51": {
+    "url": "https://raw.githubusercontent.com/marcrd/smash-ultimate-assets/master/portraits/small/mii_brawler.png",
+    "file": "51.jpg",
+    "width": 180,
+    "height": 100,
+    "bytes": 33998,
+    "sha256": "280edc6d60ab8f2ff7c9ad88a1c859fa154de6777fbd702394fde12ec9933a18"
+  },
+  "52": {
+    "url": "https://raw.githubusercontent.com/marcrd/smash-ultimate-assets/master/portraits/small/mii_swordfighter.png",
+    "file": "52.jpg",
+    "width": 180,
+    "height": 100,
+    "bytes": 33647,
+    "sha256": "f930ece4b389df9955cf433d0ea9b3bf92a988b14e6fb2bcf453407ae77d6e55"
+  },
+  "53": {
+    "url": "https://raw.githubusercontent.com/marcrd/smash-ultimate-assets/master/portraits/small/mii_gunner.png",
+    "file": "53.jpg",
+    "width": 180,
+    "height": 100,
+    "bytes": 33396,
+    "sha256": "279811893f34b139f1a5ab5e4654e2c64f2656a9aca6b6c79aeb30e4553453f4"
+  },
+  "54": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/palutena.png",
+    "file": "54.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 84941,
+    "sha256": "571ed8eacd53af5275af5cbe17f32bc8f6e4b2de40ffbf71c28011751b606416"
+  },
+  "55": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/pac_man.png",
+    "file": "55.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 45127,
+    "sha256": "22c38d2c314296f44c59187fe8e17489e4239e68e191518e4b0fffafa013e51c"
+  },
+  "56": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/reflet.png",
+    "file": "56.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 75775,
+    "sha256": "c58002b010621ef93a4097cc28d864dc67f9c9efd978c0b54c82c246d7f7656b"
+  },
+  "57": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/shulk.png",
+    "file": "57.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 85585,
+    "sha256": "9874a036e6afe1ba8c9717082618da9a87a58efcc79864b674c8a78a29b89ac3"
+  },
+  "58": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/koopa_jr.png",
+    "file": "58.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 55383,
+    "sha256": "8035378cc370c962158ed221fc95262f3ca70e21182e8db98e68e92107d1928f"
+  },
+  "59": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/duck_hunt.png",
+    "file": "59.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 78059,
+    "sha256": "d6fe4c8403495100b22fd7250e852d955edc92cb31602890d657715a49c2a248"
+  },
+  "60": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/ryu.png",
+    "file": "60.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 70391,
+    "sha256": "ee2ff3ea5eb50a1a356f5c3d578d3893a094e266f128f4d836bcee895c81ecf1"
+  },
+  "60e": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/ken.png",
+    "file": "60e.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 86420,
+    "sha256": "70f8dea3506b63d10ee1a47a7bc3eb3951184acccc6f51eb6a72cbf1e00f0d6b"
+  },
+  "61": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/cloud.png",
+    "file": "61.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 80402,
+    "sha256": "4de8b776549ecfeff8d0b1a75a791b1a7ae0d481eb7dd091335524190f731e8e"
+  },
+  "62": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/kamui.png",
+    "file": "62.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 76108,
+    "sha256": "73a8722ec872c71bb0a5ff7c62af26be8a0a573143535a17e7d4ac837d9780a5"
+  },
+  "63": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/bayonetta.png",
+    "file": "63.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 84178,
+    "sha256": "5f2493346d01de0ce671f24594b5e872535ad36e19808975603e30441d1cc9bb"
+  },
+  "64": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/inkling.png",
+    "file": "64.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 54568,
+    "sha256": "98ce2db747d3b68400bfd43f317041344a1bd273b3caafa6ccd35382be7b0f42"
+  },
+  "65": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/ridley.png",
+    "file": "65.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 85032,
+    "sha256": "e768decd3378d80021f329bcad95f630e8a1988a8f7e5466b365a426e988d794"
+  },
+  "66": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/simon.png",
+    "file": "66.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 91896,
+    "sha256": "abd44672402b39bccdf715c3b12160c06d83dc201178d83be4876b472f9bc090"
+  },
+  "66e": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/richter.png",
+    "file": "66e.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 71945,
+    "sha256": "ba48d93d5de69f1395c618208b86d8bb9e289962e36b1336c16c8d0e58a1ab30"
+  },
+  "67": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/king_k_rool.png",
+    "file": "67.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 90827,
+    "sha256": "b8a8c404dd3684e892fbb7721dc3d9695122464f4d85ae0d34833f3233196192"
+  },
+  "68": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/shizue.png",
+    "file": "68.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 46753,
+    "sha256": "2abc48b0e13417df18111e09f4841894fa65e8b7eed9713964a80491c5065509"
+  },
+  "69": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/gaogaen.png",
+    "file": "69.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 90695,
+    "sha256": "4a1812f16c7a23809bb7cf6319a36c16de0a62cd1e0a2521aca13238c961a58a"
+  },
+  "70": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/packun_flower.png",
+    "file": "70.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 53749,
+    "sha256": "29038cdb834bdea2d3e70f7f68e5efa342b63df1f1c0c0c0b6dc83eab8160cb8"
+  },
+  "71": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/joker.png",
+    "file": "71.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 72754,
+    "sha256": "a17cbdcf34364196d4e8b39ab8561d3dbcf43e96ebd30570eaebc0188f9278bc"
+  },
+  "72": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/dq_hero.png",
+    "file": "72.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 73979,
+    "sha256": "d017ab3c97263add736a4014b454a12840637a5335c790e7e6805e280b1ccb44"
+  },
+  "73": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/banjo_and_kazooie.png",
+    "file": "73.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 80989,
+    "sha256": "8960ca2d647e6933292f0cc5833c9a13affd59489b1d63f21f52696a79a035c0"
+  },
+  "74": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/terry.png",
+    "file": "74.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 87345,
+    "sha256": "d39565d12188e5786d3b2e600bb8e60a7a88b8609bb1864eefebbe2a923019cd"
+  },
+  "75": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/byleth.png",
+    "file": "75.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 93822,
+    "sha256": "646713d89f85b7a1385cd590f911b2d9428dc131bc475e124649f165efb7742b"
+  },
+  "76": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/minmin.png",
+    "file": "76.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 87935,
+    "sha256": "31079ae868a35309a718049bd8a055bb0bbdae4078bd3541bf9bbadb51ed1f7b"
+  },
+  "77": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/steve.png",
+    "file": "77.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 32928,
+    "sha256": "38e6256db77bda5c473f1f85b9c8a2d971cd5da8ae3ed451d3eef6e38bdb08e5"
+  },
+  "78": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/sephiroth.png",
+    "file": "78.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 83987,
+    "sha256": "69f81ad40c1f2580d80440f9b80e04388c812283e91fc9fcbcb7f255be5504dd"
+  },
+  "79-80": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/homura.png",
+    "file": "79-80.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 107550,
+    "sha256": "9ec3354c397c84846bf1b21b32d5870483ef5476227cdba340b105c431f05d2e"
+  },
+  "81": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/kazuya.png",
+    "file": "81.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 77724,
+    "sha256": "f1683197e69773fda5b05eb8e2f2eefed7ceb3bc065ae8f0d26afb01f1e544f3"
+  },
+  "82": {
+    "url": "https://www.smashbros.com/assets_v2/img/fighter/thumb_a/sora.png",
+    "file": "82.png",
+    "width": 270,
+    "height": 164,
+    "bytes": 90066,
+    "sha256": "a109ac192b436469975623a71c119d89d65bc59c562fd8b32e28ef893e794143"
+  }
+}

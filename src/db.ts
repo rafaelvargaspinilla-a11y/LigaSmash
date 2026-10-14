@@ -1,6 +1,7 @@
 import Dexie, { type Table } from "dexie";
 import {
   makeWin,
+  fixedPlayerNames,
   validateBackup,
   type Player,
   type Win,
@@ -35,6 +36,21 @@ export class TrackerDB extends Dexie {
   }
   private async enqueue(change: Change) {
     if (this.shared) await this.pending.add({ change });
+  }
+  async ensureFixedPlayers() {
+    await this.transaction("rw", this.players, this.pending, async () => {
+      const before = await this.players.toArray();
+      const after = fixedPlayerNames(before);
+      if (
+        before.length === after.length &&
+        before.every((p) =>
+          after.some((q) => q.id === p.id && q.name === p.name),
+        )
+      )
+        return;
+      await this.players.bulkPut(after);
+      await this.enqueue({ kind: "players", before, after });
+    });
   }
   async setupPlayers(names: string[]) {
     if (
