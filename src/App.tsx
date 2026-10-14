@@ -92,6 +92,7 @@ export default function App() {
       .then(() => synchronize())
       .catch((e) => setDbError(errorText(e)));
   }, [syncState.databaseName]);
+  const [statsLeague, setStatsLeague] = useState<"trio" | "duel">("trio");
   const [page, setPage] = useState<Page>("home");
   const [period, setPeriod] = useState<Period>("all");
   const [custom, setCustom] = useState<[string, string]>([
@@ -251,11 +252,11 @@ export default function App() {
     }
   }
   const navigation: [Page, string, typeof Trophy][] = [
-    ["home", "Inicio", Trophy],
+    ["home", "LaLiga", Trophy],
+    ["duel", "1vs1", Swords],
     ["stats", "Estadísticas", BarChart3],
     ["characters", "Personajes", Users],
     ["history", "Historial", History],
-    ["duel", "1vs1", Swords],
   ];
   if (dbError)
     return (
@@ -360,7 +361,7 @@ export default function App() {
                 {
                   {
                     duel: "La liga 1vs1.",
-                    home: "Vuestra arena.",
+                    home: "La liga.",
                     stats: "Las estadísticas.",
                     characters: "El plantel.",
                     history: "El historial.",
@@ -391,7 +392,29 @@ export default function App() {
               </button>
             )}
           </div>
-          {page !== "home" && (
+          {page === "stats" && (
+            <div
+              className="league-filter"
+              role="group"
+              aria-label="Liga de estadísticas"
+            >
+              <button
+                className={`secondary ${statsLeague === "trio" ? "selected" : ""}`}
+                aria-pressed={statsLeague === "trio"}
+                onClick={() => setStatsLeague("trio")}
+              >
+                La liga
+              </button>
+              <button
+                className={`secondary ${statsLeague === "duel" ? "selected" : ""}`}
+                aria-pressed={statsLeague === "duel"}
+                onClick={() => setStatsLeague("duel")}
+              >
+                1vs1
+              </button>
+            </div>
+          )}
+          {page !== "home" && page !== "duel" && (
             <div className="filter-bar">
               <span className="section-label">CONSULTAR PERIODO</span>
               <PeriodFilter
@@ -402,7 +425,8 @@ export default function App() {
               />
             </div>
           )}
-          {(page === "home" || page === "stats") && (
+          {(page === "home" ||
+            (page === "stats" && statsLeague === "trio")) && (
             <>
               <div className="summary-grid">
                 <section className="summary-card">
@@ -791,6 +815,17 @@ export default function App() {
                 )}
               </section>
             </>
+          )}
+          {page === "stats" && statsLeague === "duel" && (
+            <DuelLeague
+              players={players}
+              wins={allWins}
+              onChange={notify}
+              databaseName={syncState.databaseName}
+              statisticsOnly
+              selectedPeriod={period}
+              selectedCustom={custom}
+            />
           )}
           {page === "duel" && (
             <DuelLeague

@@ -98,13 +98,15 @@ export class TrackerDB extends Dexie {
     opponentId: PlayerId,
     date: Date,
     id?: string,
+    characters?: [string, string],
   ) {
     const win: Win = {
       id: id ?? crypto.randomUUID(),
       playerId,
       opponentId,
       league: "duel",
-      characterId: "",
+      characterId: characters?.[0] ?? "",
+      ...(characters ? { opponentCharacterId: characters[1] } : {}),
       timestamp: date.toISOString(),
       localDate:
         date.getFullYear() +
@@ -114,7 +116,7 @@ export class TrackerDB extends Dexie {
         String(date.getDate()).padStart(2, "0"),
     };
     validateBackup({
-      schemaVersion: 3,
+      schemaVersion: 4,
       exportedAt: date.toISOString(),
       players: await this.players.toArray(),
       wins: [win],
@@ -124,6 +126,10 @@ export class TrackerDB extends Dexie {
       const before = id ? await this.wins.get(id) : undefined;
       if (id && (!before || before.league !== "duel"))
         throw new Error("La partida 1vs1 ya no existe.");
+      if (before?.opponentCharacterId && !characters)
+        throw new Error(
+          "Selecciona los dos personajes para conservar la partida.",
+        );
       await this.wins.put(win);
       await this.enqueue(
         before ? { kind: "edit", before, after: win } : { kind: "add", win },
@@ -170,7 +176,7 @@ export class TrackerDB extends Dexie {
       this.wins,
       this.preferences,
       async () => ({
-        schemaVersion: 3,
+        schemaVersion: 4,
         exportedAt: new Date().toISOString(),
         players: await this.players.toArray(),
         wins: await this.wins.toArray(),

@@ -504,11 +504,14 @@ export function PeriodFilter({
 export function Evolution({
   wins,
   players,
+  victoriesOnly = false,
 }: {
   wins: Win[];
   players: Player[];
+  victoriesOnly?: boolean;
 }) {
-  const [metric, setMetric] = useState<"points" | "wins">("points");
+  const [selectedMetric, setMetric] = useState<"points" | "wins">("points");
+  const metric = victoriesOnly ? "wins" : selectedMetric;
   // At most 32 date buckets; cumulative counts retain all matches without rendering thousands of points.
   const days = [...new Set(wins.map((w) => w.localDate))].sort();
   const step = Math.max(1, Math.ceil(days.length / 32));
@@ -533,20 +536,22 @@ export function Evolution({
     <section className="panel chart-panel">
       <div className="section-heading">
         <h2>Evolución de {metric === "points" ? "puntos" : "victorias"}</h2>
-        <div className="metric-switch">
-          <button
-            aria-pressed={metric === "points"}
-            onClick={() => setMetric("points")}
-          >
-            Puntos
-          </button>
-          <button
-            aria-pressed={metric === "wins"}
-            onClick={() => setMetric("wins")}
-          >
-            Victorias
-          </button>
-        </div>
+        {!victoriesOnly && (
+          <div className="metric-switch">
+            <button
+              aria-pressed={metric === "points"}
+              onClick={() => setMetric("points")}
+            >
+              Puntos
+            </button>
+            <button
+              aria-pressed={metric === "wins"}
+              onClick={() => setMetric("wins")}
+            >
+              Victorias
+            </button>
+          </div>
+        )}
       </div>
       {!wins.length ? (
         <Empty text="Registra tu primera partida para ver la evolución." />

@@ -69,7 +69,7 @@ test("dos dispositivos: grupo privado, cambios offline, fusión y respuesta perd
     await bind(second);
     await page.goto("./");
     await expect(
-      page.getByRole("heading", { name: "Vuestra arena." }),
+      page.getByRole("heading", { name: "La liga." }),
     ).toBeVisible();
     const add = async (p: typeof page, player: string, fighter: string) => {
       await p

@@ -71,7 +71,7 @@ export function applyChanges(input: Backup, changes: PendingChange[]): Backup {
       wins.delete(c.before.id);
     }
   }
-  data.schemaVersion = 3;
+  data.schemaVersion = 4;
   data.wins = [...wins.values()];
   data.favorites = [];
   return validateBackup(data);
