@@ -1936,3 +1936,31 @@ a {
 .duel-form > .primary {
   margin: 0;
 }
+
+.modal:has(.duel-form) {
+  min-width: 0;
+  overflow-x: hidden;
+}
+.duel-form {
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+}
+.duel-form .duel-fighter-grid {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+.duel-fighter-grid .fighter-tile {
+  min-width: 0;
+  max-width: 100%;
+}
+.duel-fighter-grid .fighter-tile .portrait {
+  width: min(55px, 100%);
+  max-width: 100%;
+}
+.duel-fighter-grid .fighter-tile > span:last-child {
+  min-width: 0;
+  width: 100%;
+  overflow-wrap: anywhere;
+  justify-content: center;
+}
