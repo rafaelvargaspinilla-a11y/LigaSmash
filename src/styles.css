@@ -1879,3 +1879,60 @@ a {
     width: 100%;
   }
 }
+
+.duel-form {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+.duel-form > label {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  color: #a6a8b6;
+  font-size: 13px;
+}
+.duel-form > label > input,
+.duel-form > label > select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.duel-character-slots {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  margin: 0;
+  gap: 12px;
+}
+.duel-character-slots > button {
+  width: 100%;
+  min-width: 0;
+  padding: 14px 10px;
+  justify-content: flex-start;
+  gap: 10px;
+}
+.duel-character-slots > button > span:last-child {
+  min-width: 0;
+  max-width: 100%;
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.duel-character-slots .portrait {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  flex: 0 0 48px;
+}
+.duel-character-slots small {
+  font-size: 11px;
+  min-height: 0;
+}
+.duel-form .duel-fighter-grid {
+  margin: 0;
+  min-width: 0;
+}
+.duel-form > .primary {
+  margin: 0;
+}

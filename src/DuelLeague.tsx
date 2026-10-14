@@ -405,6 +405,7 @@ export default function DuelLeague({
           }}
         >
           <form
+            className="duel-form"
             onSubmit={async (e) => {
               e.preventDefault();
               if (busy) return;
@@ -463,7 +464,7 @@ export default function DuelLeague({
                   ))}
               </select>
             </label>
-            <div className="character-slots">
+            <div className="character-slots duel-character-slots">
               {(["winner", "loser"] as const).map((slot) => {
                 const player = slot === "winner" ? winner : loser;
                 const id = characterByPlayer[player];
