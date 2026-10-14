@@ -92,6 +92,10 @@ export default function App() {
       .then(() => synchronize())
       .catch((e) => setDbError(errorText(e)));
   }, [syncState.databaseName]);
+  const [charactersLeague, setCharactersLeague] = useState<"trio" | "duel">(
+    "trio",
+  );
+  const [historyLeague, setHistoryLeague] = useState<"trio" | "duel">("trio");
   const [statsLeague, setStatsLeague] = useState<"trio" | "duel">("trio");
   const [page, setPage] = useState<Page>("home");
   const [period, setPeriod] = useState<Period>("all");
@@ -140,6 +144,10 @@ export default function App() {
     () => statistics(filtered, players),
     [filtered, players],
   );
+  const playedCharacters = useMemo(
+    () => new Set(filtered.flatMap((w) => w.characters ?? [w.characterId])),
+    [filtered],
+  );
   const allStats = useMemo(() => statistics(wins, players), [wins, players]);
   const latest = useMemo(
     () =>
@@ -149,6 +157,19 @@ export default function App() {
       ),
     [wins],
   );
+  const duelHistoryCount = filteredDuelCount();
+  function filteredDuelCount() {
+    return filterPeriod(
+      allWins.filter((w) => w.league === "duel"),
+      periodBounds(period, new Date(), custom),
+    ).filter(
+      (w) =>
+        (!historyPlayer || w.playerId === historyPlayer) &&
+        (!historyCharacter ||
+          w.characterId === historyCharacter ||
+          w.opponentCharacterId === historyCharacter),
+    ).length;
+  }
   const history = useMemo(
     () =>
       [...filtered]
@@ -414,6 +435,50 @@ export default function App() {
               </button>
             </div>
           )}
+          {page === "history" && (
+            <div
+              className="league-filter"
+              role="group"
+              aria-label="Liga del historial"
+            >
+              <button
+                className={`secondary ${historyLeague === "trio" ? "selected" : ""}`}
+                aria-pressed={historyLeague === "trio"}
+                onClick={() => setHistoryLeague("trio")}
+              >
+                La liga
+              </button>
+              <button
+                className={`secondary ${historyLeague === "duel" ? "selected" : ""}`}
+                aria-pressed={historyLeague === "duel"}
+                onClick={() => setHistoryLeague("duel")}
+              >
+                1vs1
+              </button>
+            </div>
+          )}
+          {page === "characters" && (
+            <div
+              className="league-filter"
+              role="group"
+              aria-label="Liga de personajes"
+            >
+              <button
+                className={`secondary ${charactersLeague === "trio" ? "selected" : ""}`}
+                aria-pressed={charactersLeague === "trio"}
+                onClick={() => setCharactersLeague("trio")}
+              >
+                La liga
+              </button>
+              <button
+                className={`secondary ${charactersLeague === "duel" ? "selected" : ""}`}
+                aria-pressed={charactersLeague === "duel"}
+                onClick={() => setCharactersLeague("duel")}
+              >
+                1vs1
+              </button>
+            </div>
+          )}
           {page !== "home" && page !== "duel" && (
             <div className="filter-bar">
               <span className="section-label">CONSULTAR PERIODO</span>
@@ -674,7 +739,7 @@ export default function App() {
               )}
             </>
           )}
-          {page === "characters" && (
+          {page === "characters" && charactersLeague === "trio" && (
             <>
               <div className="panel favorites-panel">
                 <h2>El favorito de cada jugador</h2>
@@ -723,8 +788,10 @@ export default function App() {
               </p>
               <div className="character-stats-grid">
                 {[...fighters]
-                  .filter((f) =>
-                    normalize(f.name).includes(normalize(characterQuery)),
+                  .filter(
+                    (f) =>
+                      playedCharacters.has(f.id) &&
+                      normalize(f.name).includes(normalize(characterQuery)),
                   )
                   .sort(
                     (a, b) =>
@@ -751,9 +818,13 @@ export default function App() {
                     />
                   ))}
               </div>
-              {!fighters.some((f) =>
-                normalize(f.name).includes(normalize(characterQuery)),
-              ) && <Empty text="No se ha encontrado ese luchador." />}
+              {!fighters.some(
+                (f) =>
+                  playedCharacters.has(f.id) &&
+                  normalize(f.name).includes(normalize(characterQuery)),
+              ) && (
+                <Empty text="No hay personajes jugados que coincidan con estos filtros." />
+              )}
             </>
           )}
           {page === "history" && (
@@ -787,33 +858,78 @@ export default function App() {
                     ))}
                   </select>
                 </label>
-                <span className="muted">{history.length} partidas</span>
+                <span className="muted">
+                  {historyLeague === "trio" ? history.length : duelHistoryCount}{" "}
+                  partidas
+                </span>
               </div>
-              <section className="panel history-panel">
-                {history.length ? (
-                  history
-                    .slice(0, historyLimit)
-                    .map((w) => (
-                      <WinRow
-                        key={w.id}
-                        win={w}
-                        players={players}
-                        onEdit={setEditing}
-                        onDelete={setDeleting}
-                      />
-                    ))
-                ) : (
-                  <Empty text="No hay partidas que coincidan con estos filtros." />
-                )}
-                {history.length > historyLimit && (
-                  <button
-                    className="secondary full"
-                    onClick={() => setHistoryLimit((n) => n + 50)}
-                  >
-                    Mostrar 50 más ({history.length - historyLimit} pendientes)
-                  </button>
-                )}
-              </section>
+              {historyLeague === "trio" && (
+                <section className="panel history-panel">
+                  {history.length ? (
+                    history
+                      .slice(0, historyLimit)
+                      .map((w) => (
+                        <WinRow
+                          key={w.id}
+                          win={w}
+                          players={players}
+                          onEdit={setEditing}
+                          onDelete={setDeleting}
+                        />
+                      ))
+                  ) : (
+                    <Empty text="No hay partidas que coincidan con estos filtros." />
+                  )}
+                  {history.length > historyLimit && (
+                    <button
+                      className="secondary full"
+                      onClick={() => setHistoryLimit((n) => n + 50)}
+                    >
+                      Mostrar 50 más ({history.length - historyLimit}{" "}
+                      pendientes)
+                    </button>
+                  )}
+                </section>
+              )}
+              {historyLeague === "duel" && (
+                <DuelLeague
+                  players={players}
+                  wins={allWins}
+                  onChange={notify}
+                  databaseName={syncState.databaseName}
+                  historyOnly
+                  selectedPeriod={period}
+                  selectedCustom={custom}
+                  selectedPlayer={historyPlayer}
+                  selectedCharacter={historyCharacter}
+                />
+              )}
+            </>
+          )}
+          {page === "characters" && charactersLeague === "duel" && (
+            <>
+              <div className="section-heading">
+                <h2>Personajes jugados · 1vs1</h2>
+                <label className="search">
+                  <Search size={17} />
+                  <input
+                    placeholder="Buscar luchador"
+                    aria-label="Buscar en estadísticas de personajes"
+                    value={characterQuery}
+                    onChange={(e) => setCharacterQuery(e.target.value)}
+                  />
+                </label>
+              </div>
+              <DuelLeague
+                players={players}
+                wins={allWins}
+                onChange={notify}
+                databaseName={syncState.databaseName}
+                charactersOnly
+                selectedPeriod={period}
+                selectedCustom={custom}
+                selectedQuery={characterQuery}
+              />
             </>
           )}
           {page === "stats" && statsLeague === "duel" && (

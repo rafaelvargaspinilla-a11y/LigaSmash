@@ -21,6 +21,11 @@ export default function DuelLeague({
   onChange,
   databaseName,
   statisticsOnly = false,
+  historyOnly = false,
+  charactersOnly = false,
+  selectedQuery = "",
+  selectedPlayer = "",
+  selectedCharacter = "",
   selectedPeriod,
   selectedCustom,
 }: {
@@ -29,6 +34,11 @@ export default function DuelLeague({
   onChange: (message: string) => void;
   databaseName: string;
   statisticsOnly?: boolean;
+  historyOnly?: boolean;
+  charactersOnly?: boolean;
+  selectedQuery?: string;
+  selectedPlayer?: string;
+  selectedCharacter?: string;
   selectedPeriod?: Period;
   selectedCustom?: [string, string];
 }) {
@@ -57,7 +67,17 @@ export default function DuelLeague({
     setDeleting(undefined);
     setError("");
   }, [databaseName]);
-  useEffect(() => setLimit(50), [period, custom]);
+  useEffect(
+    () => setLimit(50),
+    [
+      period,
+      custom,
+      selectedPeriod,
+      selectedCustom,
+      selectedPlayer,
+      selectedCharacter,
+    ],
+  );
   const matches = filterPeriod(
     wins.filter((w) => w.league === "duel"),
     periodBounds(
@@ -75,10 +95,18 @@ export default function DuelLeague({
       ).length,
     }))
     .sort((a, b) => b.victories - a.victories);
-  const history = [...matches].sort(
-    (a, b) =>
-      b.timestamp.localeCompare(a.timestamp) || b.id.localeCompare(a.id),
-  );
+  const history = matches
+    .filter(
+      (w) =>
+        (!selectedPlayer || w.playerId === selectedPlayer) &&
+        (!selectedCharacter ||
+          w.characterId === selectedCharacter ||
+          w.opponentCharacterId === selectedCharacter),
+    )
+    .sort(
+      (a, b) =>
+        b.timestamp.localeCompare(a.timestamp) || b.id.localeCompare(a.id),
+    );
   const characterVictories = new Map<string, number>();
   for (const w of matches)
     if (w.characterId)
@@ -109,7 +137,7 @@ export default function DuelLeague({
   }
   return (
     <>
-      {!statisticsOnly && (
+      {!statisticsOnly && !historyOnly && !charactersOnly && (
         <div className="duel-actions">
           <button className="primary" onClick={() => open()}>
             <Plus size={20} />
@@ -117,7 +145,7 @@ export default function DuelLeague({
           </button>
         </div>
       )}
-      {!statisticsOnly && (
+      {!statisticsOnly && !historyOnly && !charactersOnly && (
         <div className="filter-bar">
           <span className="section-label">CONSULTAR PERIODO</span>
           <PeriodFilter
@@ -128,150 +156,157 @@ export default function DuelLeague({
           />
         </div>
       )}
-      <div className="summary-grid">
-        <section className="summary-card">
-          <div className="summary-icon">
-            <Swords size={21} />
-          </div>
-          <span>Partidas del periodo</span>
-          <strong>{matches.length}</strong>
-          <small>Duelos entre dos jugadores</small>
-        </section>
-        <section className="summary-card leader-card">
-          <div className="summary-icon gold">
-            <Trophy size={21} />
-          </div>
-          <span>
-            {ranking.filter(
-              (p) => p.victories > 0 && p.victories === ranking[0]?.victories,
-            ).length > 1
-              ? "Liderato compartido"
-              : "Líder actual"}
-          </span>
-          <strong className="text-value">
-            {ranking
-              .filter(
-                (p) => p.victories > 0 && p.victories === ranking[0]?.victories,
-              )
-              .map((p) => p.name)
-              .join(" · ") || "Por decidir"}
-          </strong>
-          <small>Clasificación por victorias</small>
-        </section>
-        <section className="summary-card">
-          <div className="summary-icon gold">
-            <Star size={21} />
-          </div>
-          <span>Luchador más ganador</span>
-          <strong className="text-value">
-            {topCharacters.map((id) => fighterById.get(id)?.name).join(" · ") ||
-              "Por descubrir"}
-          </strong>
-          <small>Por victorias con personaje registrado</small>
-        </section>
-      </div>
-      <div className="section-heading">
-        <div>
-          <p className="eyebrow">LA RIVALIDAD</p>
-          <h2>Clasificación 1vs1</h2>
-        </div>
-        <span className="tag">POR VICTORIAS</span>
-      </div>
-      <div className="ranking-grid duel-ranking">
-        {ranking.map((p) => {
-          const rank =
-            1 + ranking.filter((q) => q.victories > p.victories).length;
-          const leader = rank === 1 && p.victories > 0;
-          const percent = p.played ? (p.victories / p.played) * 100 : 0;
-          return (
-            <section
-              key={p.id}
-              className={`ranking-card ${leader ? "is-leader" : ""}`}
-              style={
-                {
-                  "--player-color": colors[indexOf(p.id)],
-                } as React.CSSProperties
-              }
-            >
-              <div className="ranking-top">
-                <span className="rank-number">0{rank}</span>
-                {leader ? (
-                  <span className="leader-tag">
-                    <Trophy size={12} />
-                    {ranking.filter((q) => q.victories === p.victories).length >
-                    1
-                      ? "EMPATE"
-                      : "LÍDER"}
-                  </span>
-                ) : (
-                  <span className="tag">JUGADOR {indexOf(p.id) + 1}</span>
-                )}
+      {!historyOnly && !charactersOnly && (
+        <>
+          <div className="summary-grid">
+            <section className="summary-card">
+              <div className="summary-icon">
+                <Swords size={21} />
               </div>
-              <div className="player-identity">
-                <span className="avatar">{p.name[0]}</span>
-                <h3>{p.name}</h3>
-              </div>
-              <div className="player-points">
-                <strong>{p.victories}</strong>
-                <span>victorias</span>
-              </div>
-              <div className="player-numbers">
-                <div>
-                  <strong>{p.played}</strong>
-                  <span>partidas</span>
-                </div>
-                <div>
-                  <strong>
-                    {Math.round(percent)}
-                    <small>%</small>
-                  </strong>
-                  <span>de victorias</span>
-                </div>
-              </div>
-              <div className="progress-track">
-                <div style={{ width: `${percent}%` }} />
-              </div>
-              <div className="card-foot">
-                <span>Derrotas</span>
-                <strong>{p.played - p.victories}</strong>
-              </div>
+              <span>Partidas del periodo</span>
+              <strong>{matches.length}</strong>
+              <small>Duelos entre dos jugadores</small>
             </section>
-          );
-        })}
-      </div>
-      {matches.some((w) => !w.opponentCharacterId) && (
-        <p className="legacy-note">
-          Hay duelos antiguos sin personajes. Puedes completarlos desde su
-          historial.
-        </p>
-      )}
-      <section className="panel duel-panel">
-        <h2>Enfrentamientos</h2>
-        {players.flatMap((a, i) =>
-          players.slice(i + 1).map((b) => {
-            const pair = matches.filter(
-              (w) =>
-                (w.playerId === a.id && w.opponentId === b.id) ||
-                (w.playerId === b.id && w.opponentId === a.id),
-            );
-            return (
-              <div className="duel-row" key={a.id + b.id}>
-                <span>
-                  {a.name} vs {b.name}
-                </span>
-                <strong>
-                  {pair.filter((w) => w.playerId === a.id).length} –{" "}
-                  {pair.filter((w) => w.playerId === b.id).length}
-                </strong>
+            <section className="summary-card leader-card">
+              <div className="summary-icon gold">
+                <Trophy size={21} />
               </div>
-            );
-          }),
-        )}
-      </section>
+              <span>
+                {ranking.filter(
+                  (p) =>
+                    p.victories > 0 && p.victories === ranking[0]?.victories,
+                ).length > 1
+                  ? "Liderato compartido"
+                  : "Líder actual"}
+              </span>
+              <strong className="text-value">
+                {ranking
+                  .filter(
+                    (p) =>
+                      p.victories > 0 && p.victories === ranking[0]?.victories,
+                  )
+                  .map((p) => p.name)
+                  .join(" · ") || "Por decidir"}
+              </strong>
+              <small>Clasificación por victorias</small>
+            </section>
+            <section className="summary-card">
+              <div className="summary-icon gold">
+                <Star size={21} />
+              </div>
+              <span>Luchador más ganador</span>
+              <strong className="text-value">
+                {topCharacters
+                  .map((id) => fighterById.get(id)?.name)
+                  .join(" · ") || "Por descubrir"}
+              </strong>
+              <small>Por victorias con personaje registrado</small>
+            </section>
+          </div>
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">LA RIVALIDAD</p>
+              <h2>Clasificación 1vs1</h2>
+            </div>
+            <span className="tag">POR VICTORIAS</span>
+          </div>
+          <div className="ranking-grid duel-ranking">
+            {ranking.map((p) => {
+              const rank =
+                1 + ranking.filter((q) => q.victories > p.victories).length;
+              const leader = rank === 1 && p.victories > 0;
+              const percent = p.played ? (p.victories / p.played) * 100 : 0;
+              return (
+                <section
+                  key={p.id}
+                  className={`ranking-card ${leader ? "is-leader" : ""}`}
+                  style={
+                    {
+                      "--player-color": colors[indexOf(p.id)],
+                    } as React.CSSProperties
+                  }
+                >
+                  <div className="ranking-top">
+                    <span className="rank-number">0{rank}</span>
+                    {leader ? (
+                      <span className="leader-tag">
+                        <Trophy size={12} />
+                        {ranking.filter((q) => q.victories === p.victories)
+                          .length > 1
+                          ? "EMPATE"
+                          : "LÍDER"}
+                      </span>
+                    ) : (
+                      <span className="tag">JUGADOR {indexOf(p.id) + 1}</span>
+                    )}
+                  </div>
+                  <div className="player-identity">
+                    <span className="avatar">{p.name[0]}</span>
+                    <h3>{p.name}</h3>
+                  </div>
+                  <div className="player-points">
+                    <strong>{p.victories}</strong>
+                    <span>victorias</span>
+                  </div>
+                  <div className="player-numbers">
+                    <div>
+                      <strong>{p.played}</strong>
+                      <span>partidas</span>
+                    </div>
+                    <div>
+                      <strong>
+                        {Math.round(percent)}
+                        <small>%</small>
+                      </strong>
+                      <span>de victorias</span>
+                    </div>
+                  </div>
+                  <div className="progress-track">
+                    <div style={{ width: `${percent}%` }} />
+                  </div>
+                  <div className="card-foot">
+                    <span>Derrotas</span>
+                    <strong>{p.played - p.victories}</strong>
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+          {matches.some((w) => !w.opponentCharacterId) && (
+            <p className="legacy-note">
+              Hay duelos antiguos sin personajes. Puedes completarlos desde su
+              historial.
+            </p>
+          )}
+          <section className="panel duel-panel">
+            <h2>Enfrentamientos</h2>
+            {players.flatMap((a, i) =>
+              players.slice(i + 1).map((b) => {
+                const pair = matches.filter(
+                  (w) =>
+                    (w.playerId === a.id && w.opponentId === b.id) ||
+                    (w.playerId === b.id && w.opponentId === a.id),
+                );
+                return (
+                  <div className="duel-row" key={a.id + b.id}>
+                    <span>
+                      {a.name} vs {b.name}
+                    </span>
+                    <strong>
+                      {pair.filter((w) => w.playerId === a.id).length} –{" "}
+                      {pair.filter((w) => w.playerId === b.id).length}
+                    </strong>
+                  </div>
+                );
+              }),
+            )}
+          </section>
+        </>
+      )}
       {statisticsOnly && (
         <Evolution wins={matches} players={players} victoriesOnly />
       )}
-      {statisticsOnly && (
+      {(statisticsOnly || charactersOnly) && (
         <section className="panel duel-panel">
           <div className="section-heading">
             <h2>Luchadores del periodo</h2>
@@ -279,11 +314,13 @@ export default function DuelLeague({
           </div>
           <div className="character-stats-grid">
             {fighters
-              .filter((f) =>
-                matches.some(
-                  (w) =>
-                    w.characterId === f.id || w.opponentCharacterId === f.id,
-                ),
+              .filter(
+                (f) =>
+                  normalize(f.name).includes(normalize(selectedQuery)) &&
+                  matches.some(
+                    (w) =>
+                      w.characterId === f.id || w.opponentCharacterId === f.id,
+                  ),
               )
               .map((f) => {
                 const won = matches.filter(
@@ -327,13 +364,19 @@ export default function DuelLeague({
                 );
               })}
           </div>
-          {!matches.some((w) => w.characterId) && (
-            <Empty text="No hay personajes registrados en este periodo." />
+          {!fighters.some(
+            (f) =>
+              normalize(f.name).includes(normalize(selectedQuery)) &&
+              matches.some(
+                (w) => w.characterId === f.id || w.opponentCharacterId === f.id,
+              ),
+          ) && (
+            <Empty text="No hay personajes jugados que coincidan con estos filtros." />
           )}
         </section>
       )}
-      {!statisticsOnly && (
-        <section className="panel duel-panel">
+      {historyOnly && (
+        <section className="panel duel-panel duel-history-panel">
           <h2>Historial 1vs1</h2>
           {!history.length && (
             <Empty text="Todavía no hay duelos en este periodo." />

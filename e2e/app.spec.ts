@@ -473,13 +473,25 @@ test("1vs1: ligas separadas, rivales, edición, recarga y eliminación", async (
   await expect(
     page.locator(".duel-ranking .ranking-card").first(),
   ).toContainText("100");
+  await expect(
+    page.getByRole("heading", { name: "Historial 1vs1", exact: true }),
+  ).toHaveCount(0);
+  await navigate("Historial");
+  await page
+    .getByRole("group", { name: "Liga del historial" })
+    .getByRole("button", { name: "1vs1", exact: true })
+    .click();
   await expect(page.locator(".duel-portraits")).toContainText("Carlos · Mario");
   await expect(page.locator(".duel-portraits")).toContainText("Rafa · Link");
   await expect(
     page.getByText("Carlos gana a Rafa", { exact: true }),
   ).toBeVisible();
   await page.reload();
-  await navigate("1vs1");
+  await navigate("Historial");
+  await page
+    .getByRole("group", { name: "Liga del historial" })
+    .getByRole("button", { name: "1vs1", exact: true })
+    .click();
   await expect(
     page.getByText("Carlos gana a Rafa", { exact: true }),
   ).toBeVisible();
@@ -507,18 +519,14 @@ test("1vs1: ligas separadas, rivales, edición, recarga y eliminación", async (
     page.getByRole("button", { name: "Registrar victoria 1vs1", exact: true }),
   ).toHaveCount(0);
   await expect(
-    page
-      .locator(".character-stat")
-      .filter({
-        has: page.getByRole("heading", { name: "Kirby", exact: true }),
-      }),
+    page.locator(".character-stat").filter({
+      has: page.getByRole("heading", { name: "Kirby", exact: true }),
+    }),
   ).toContainText("1 victorias · 0 derrotas");
   await expect(
-    page
-      .locator(".character-stat")
-      .filter({
-        has: page.getByRole("heading", { name: "Link", exact: true }),
-      }),
+    page.locator(".character-stat").filter({
+      has: page.getByRole("heading", { name: "Link", exact: true }),
+    }),
   ).toContainText("0 victorias · 1 derrotas");
   await leagueFilter
     .getByRole("button", { name: "La liga", exact: true })
@@ -526,12 +534,50 @@ test("1vs1: ligas separadas, rivales, edición, recarga y eliminación", async (
   await expect(
     page.getByRole("heading", { name: "Ranking por puntos" }),
   ).toBeVisible();
+  await navigate("Personajes");
+  await expect(page.locator(".character-stat")).toHaveCount(3);
+  await expect(page.locator(".character-stat")).not.toContainText([
+    "Donkey Kong",
+  ]);
+  await page
+    .getByRole("group", { name: "Liga de personajes" })
+    .getByRole("button", { name: "1vs1", exact: true })
+    .click();
+  await expect(page.locator(".character-stat")).toHaveCount(2);
+  await expect(
+    page.getByRole("heading", { name: "Link", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Kirby", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Mario", exact: true }),
+  ).toHaveCount(0);
+  await page.getByLabel("Buscar en estadísticas de personajes").fill("Donkey");
+  await expect(page.locator(".character-stat")).toHaveCount(0);
+  await page.getByLabel("Buscar en estadísticas de personajes").fill("");
   await navigate("LaLiga");
   await expect(page.locator(".ranking-grid")).toContainText("3");
   await expect(page.locator(".ranking-grid")).toContainText("Rafa");
   await navigate("Historial");
+  await page
+    .getByRole("group", { name: "Liga del historial" })
+    .getByRole("button", { name: "La liga", exact: true })
+    .click();
   await expect(page.locator(".history-panel .win-row")).toHaveCount(1);
-  await navigate("1vs1");
+  await page
+    .getByRole("group", { name: "Liga del historial" })
+    .getByRole("button", { name: "1vs1", exact: true })
+    .click();
+  await page.getByRole("combobox", { name: "Luchador", exact: true }).selectOption("02");
+  await expect(
+    page.getByText("Andrés gana a Rafa", { exact: true }),
+  ).toHaveCount(0);
+  await page.getByRole("combobox", { name: "Luchador", exact: true }).selectOption("03");
+  await expect(
+    page.getByText("Andrés gana a Rafa", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("combobox", { name: "Luchador", exact: true }).selectOption("");
   await page.getByRole("button", { name: "Eliminar", exact: true }).click();
   await page
     .getByRole("dialog")

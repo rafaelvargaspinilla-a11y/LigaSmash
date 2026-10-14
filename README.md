@@ -115,3 +115,7 @@ La pantalla principal se titula **La liga.** y la navegación comienza con **LaL
 **Estadísticas** reúne ambas ligas con los botones **La liga / 1vs1** y un filtro de periodo común. La opción 1vs1 incluye clasificación por victorias, evolución acumulada, resultados entre parejas y victorias/derrotas por luchador y jugador. Las partidas sin personajes conservan sus resultados y no se incluyen en los recuentos de luchadores.
 
 Las copias compartidas usan el esquema 4. En Supabase existente, ejecuta `supabase/duel-characters.sql` antes de publicar esta versión.
+
+**Historial** reúne las partidas de ambas modalidades con los botones **La liga / 1vs1**, filtros de periodo, ganador y luchador, y edición/eliminación. El luchador de un duelo puede coincidir con el del ganador o el del rival. La pantalla 1vs1 mantiene el registro y la clasificación; su historial se consulta desde Historial.
+
+**Personajes** también permite elegir **La liga / 1vs1** y muestra únicamente los luchadores usados en partidas del periodo seleccionado, tanto por ganadores como por los otros participantes. La selección al registrar partidas sigue incluyendo los 86 personajes.
