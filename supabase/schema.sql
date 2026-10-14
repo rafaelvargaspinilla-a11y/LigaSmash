@@ -44,6 +44,12 @@ begin
       if exists(select 1 from jsonb_array_elements_text(item->'placements') p where p.value not in ('p1','p2','p3')) then return false; end if;
       if exists(select 1 from jsonb_array_elements(item->'placements') p where jsonb_typeof(p.value)<>'string') then return false; end if;
     end if;
+    if item ? 'characters' then
+      if payload->'schemaVersion'<>'2'::jsonb or not (item ? 'placements') or jsonb_typeof(item->'characters') is distinct from 'array' then return false; end if;
+      if jsonb_array_length(item->'characters')<>3 or item->'characters'->>0 is distinct from item->>'characterId' then return false; end if;
+      if exists(select 1 from jsonb_array_elements_text(item->'characters') c where c.value is null or not(c.value=any(allowed))) then return false; end if;
+      if exists(select 1 from jsonb_array_elements(item->'characters') c where jsonb_typeof(c.value)<>'string') then return false; end if;
+    end if;
   end loop;
   return true;
 exception when others then return false;
