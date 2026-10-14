@@ -1814,3 +1814,23 @@ a {
   font-size: 9px;
   color: #777c8c;
 }
+
+.duel-panel {
+  margin-top: 20px;
+  padding: 20px;
+}
+.duel-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid #343642;
+  flex-wrap: wrap;
+}
+.duel-panel h2 {
+  margin-bottom: 12px;
+}
+.mobile-nav button {
+  min-width: 0;
+}

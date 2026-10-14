@@ -45,3 +45,5 @@ Para el desarrollo normal usa `npm run dev`, con base `/`. Las pruebas usan dato
 Para un proyecto Supabase ya instalado, ejecuta el contenido completo de [points.sql](https://github.com/rafaelvargaspinilla-a11y/LigaSmash/blob/main/supabase/points.sql) en SQL Editor → New query → Run. Conserva todas las partidas y los códigos de grupo. En instalaciones nuevas, `schema.sql` ya incluye esta validación.
 
 El nuevo registro solicita el podio y los tres personajes. Primero suma 3 puntos, segundo 1 y tercero 0. Las partidas antiguas mantienen 3 puntos para el ganador conocido; pueden completarse desde Historial. Todos los dispositivos deben cerrar las ventanas de la versión anterior y abrir la app actualizada para sincronizar el esquema nuevo.
+
+Para activar la liga 1vs1 en un proyecto existente, ejecuta `supabase/duels.sql` en Supabase → SQL Editor. Es una actualización transaccional y repetible: conserva los grupos, códigos y partidas de la liga de tres. Instálala antes de publicar el cliente con esquema 3. Tras actualizar, cierra y vuelve a abrir las versiones antiguas de la app: el servidor impide que un cliente antiguo elimine los datos de una liga nueva.

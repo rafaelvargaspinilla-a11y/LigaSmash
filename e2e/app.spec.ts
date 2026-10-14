@@ -388,7 +388,7 @@ test("podio, personajes y puntos persisten y se editan juntos", async ({
   const backup = JSON.parse(
     readFileSync((await (await download).path())!, "utf8"),
   );
-  expect(backup.schemaVersion).toBe(2);
+  expect(backup.schemaVersion).toBe(3);
   expect(backup.wins[0].placements).toEqual(["p1", "p2", "p3"]);
   expect(backup.wins[0].characters).toEqual(["01", "03", "06"]);
   await page
@@ -441,4 +441,58 @@ test("podio, personajes y puntos persisten y se editan juntos", async ({
       .locator(".player-points"),
   ).toContainText("3");
   await expect(page.locator(".win-row")).toContainText("3.º Andrés · Kirby");
+});
+
+test("1vs1: ligas separadas, rivales, edición, recarga y eliminación", async ({
+  page,
+}) => {
+  await setup(page);
+  await add(page, "Rafa");
+  const navigate = async (name: string) =>
+    page
+      .locator(".sidebar nav:visible, .mobile-nav:visible")
+      .getByRole("button", { name, exact: true })
+      .click();
+  await navigate("1vs1");
+  await page
+    .getByRole("button", { name: "Registrar victoria 1vs1", exact: true })
+    .click();
+  let dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Ganador").selectOption("p2");
+  await dialog.getByLabel("Rival").selectOption("p1");
+  await dialog.getByRole("button", { name: "Guardar victoria" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.locator(".duel-panel").first()).toContainText("Carlos");
+  await expect(page.locator(".duel-panel").first()).toContainText(
+    "1 victorias · 1 partidas · 100%",
+  );
+  await expect(
+    page.getByText("Carlos gana a Rafa", { exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await navigate("1vs1");
+  await expect(
+    page.getByText("Carlos gana a Rafa", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Editar", exact: true }).click();
+  dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Ganador").selectOption("p3");
+  await dialog.getByRole("button", { name: "Guardar victoria" }).click();
+  await expect(
+    page.getByText("Andrés gana a Rafa", { exact: true }),
+  ).toBeVisible();
+  await navigate("Inicio");
+  await expect(page.locator(".ranking-grid")).toContainText("3");
+  await expect(page.locator(".ranking-grid")).toContainText("Rafa");
+  await navigate("Historial");
+  await expect(page.locator(".history-panel .win-row")).toHaveCount(1);
+  await navigate("1vs1");
+  await page.getByRole("button", { name: "Eliminar", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Eliminar partida", exact: true })
+    .click();
+  await expect(
+    page.getByText("Todavía no hay duelos en este periodo."),
+  ).toBeVisible();
 });

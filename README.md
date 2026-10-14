@@ -105,3 +105,7 @@ El ranking se ordena por puntos; las victorias y sus porcentajes permanecen visi
 Las partidas antiguas conservan el ganador y su personaje. Se contabilizan los 3 puntos confirmados del ganador y se señala que falta el podio; no se inventa quién quedó segundo ni con qué personaje. Completa los datos desde Historial. No se duplican partidas al completarlas.
 
 Antes de usar este formato con un proyecto Supabase que ya tenga la versión anterior, ejecuta [supabase/points.sql](supabase/points.sql) en SQL Editor. Es una actualización transaccional de las funciones de validación y escritura; no borra grupos, partidas ni códigos. Impide que un cliente antiguo sobrescriba un grupo ya actualizado al esquema 2. Cierra todas las ventanas de versiones anteriores de la app antes de volver a abrirla.
+
+La pestaña **1vs1** registra ganador, rival y fecha, sin personajes ni puntos. Incluye clasificación por victorias (los empates comparten puesto), porcentaje sobre los duelos disputados por cada jugador, resultados entre parejas e historial editable. Sus filtros y estadísticas son independientes de la liga de tres, que conserva la puntuación 3/1/0 y los personajes de cada puesto. Las copias y el grupo compartido incluyen ambas ligas en el esquema 3; las partidas antiguas siguen perteneciendo a la liga de tres.
+
+En Supabase existente, ejecuta `supabase/duels.sql` antes de desplegar esta versión; no hace falta repetir `points.sql`.

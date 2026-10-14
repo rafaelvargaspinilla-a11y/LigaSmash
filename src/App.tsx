@@ -45,6 +45,7 @@ import {
   CharacterStat,
 } from "./components";
 import { colors, nameOf, indexOf, dateLabel, errorText } from "./ui";
+import DuelLeague from "./DuelLeague";
 import SharedSettings from "./SharedSettings";
 import {
   subscribeSync,
@@ -52,7 +53,7 @@ import {
   restoreConnection,
   synchronize,
 } from "./sync";
-type Page = "home" | "stats" | "characters" | "history";
+type Page = "home" | "stats" | "characters" | "history" | "duel";
 export default function App() {
   const syncState = useSyncExternalStore(subscribeSync, getSyncStatus);
   useEffect(() => {
@@ -114,7 +115,11 @@ export default function App() {
   const [pendingImport, setPendingImport] = useState<unknown>();
   const fileRef = useRef<HTMLInputElement>(null);
   const players = data?.players ?? [];
-  const wins = data?.wins ?? [];
+  const allWins = data?.wins ?? [];
+  const wins = useMemo(
+    () => allWins.filter((w) => w.league !== "duel"),
+    [allWins],
+  );
   const favorites = data?.favorites ?? [];
   const [today, setToday] = useState(localDate(new Date()));
   useEffect(() => {
@@ -250,6 +255,7 @@ export default function App() {
     ["stats", "Estadísticas", BarChart3],
     ["characters", "Personajes", Users],
     ["history", "Historial", History],
+    ["duel", "1vs1", Swords],
   ];
   if (dbError)
     return (
@@ -353,6 +359,7 @@ export default function App() {
               <h1>
                 {
                   {
+                    duel: "La liga 1vs1.",
                     home: "Vuestra arena.",
                     stats: "Las estadísticas.",
                     characters: "El plantel.",
@@ -363,6 +370,7 @@ export default function App() {
               <p className="muted">
                 {
                   {
+                    duel: "Duelos entre amigos. Cada victoria cuenta en su propia liga.",
                     home: "Tres jugadores. Un ganador. Una rivalidad que no termina.",
                     stats: "Descubre quién domina y cómo cambia la partida.",
                     characters: "Los luchadores que os llevan a la victoria.",
@@ -783,6 +791,14 @@ export default function App() {
                 )}
               </section>
             </>
+          )}
+          {page === "duel" && (
+            <DuelLeague
+              players={players}
+              wins={allWins}
+              onChange={notify}
+              databaseName={syncState.databaseName}
+            />
           )}
           <footer className="page-footer">
             <span>SMASH TRACKER</span>

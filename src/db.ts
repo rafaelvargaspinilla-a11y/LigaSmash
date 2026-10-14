@@ -93,6 +93,44 @@ export class TrackerDB extends Dexie {
     );
     return w;
   }
+  async saveDuel(
+    playerId: PlayerId,
+    opponentId: PlayerId,
+    date: Date,
+    id?: string,
+  ) {
+    const win: Win = {
+      id: id ?? crypto.randomUUID(),
+      playerId,
+      opponentId,
+      league: "duel",
+      characterId: "",
+      timestamp: date.toISOString(),
+      localDate:
+        date.getFullYear() +
+        "-" +
+        String(date.getMonth() + 1).padStart(2, "0") +
+        "-" +
+        String(date.getDate()).padStart(2, "0"),
+    };
+    validateBackup({
+      schemaVersion: 3,
+      exportedAt: date.toISOString(),
+      players: await this.players.toArray(),
+      wins: [win],
+      favorites: [],
+    });
+    await this.transaction("rw", this.wins, this.pending, async () => {
+      const before = id ? await this.wins.get(id) : undefined;
+      if (id && (!before || before.league !== "duel"))
+        throw new Error("La partida 1vs1 ya no existe.");
+      await this.wins.put(win);
+      await this.enqueue(
+        before ? { kind: "edit", before, after: win } : { kind: "add", win },
+      );
+    });
+    return win;
+  }
   async editWin(
     id: string,
     playerId: PlayerId,
@@ -132,7 +170,7 @@ export class TrackerDB extends Dexie {
       this.wins,
       this.preferences,
       async () => ({
-        schemaVersion: 2,
+        schemaVersion: 3,
         exportedAt: new Date().toISOString(),
         players: await this.players.toArray(),
         wins: await this.wins.toArray(),
