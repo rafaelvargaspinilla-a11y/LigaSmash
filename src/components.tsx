@@ -700,6 +700,7 @@ export function CharacterStat({
   players,
   favorite,
   onFavorite,
+  duel = false,
 }: {
   id: string;
   count: number;
@@ -707,12 +708,14 @@ export function CharacterStat({
   players: Player[];
   favorite: boolean;
   onFavorite: () => void;
+  duel?: boolean;
 }) {
   const characterWins = wins.filter((w) => w.characterId === id);
   const entries = wins
     .flatMap(matchEntries)
     .filter((e) => e.characterId === id);
   const totalPoints = entries.reduce((n, e) => n + e.points, 0);
+  const losses = wins.filter((w) => w.opponentCharacterId === id);
   return (
     <article className="character-stat">
       <div className="character-stat-top">
@@ -734,7 +737,9 @@ export function CharacterStat({
         </div>
       </div>
       <p className="character-points">
-        {totalPoints} puntos · {entries.length} participaciones conocidas
+        {duel
+          ? `${losses.length} derrotas · ${characterWins.length + losses.length} participaciones conocidas`
+          : `${totalPoints} puntos · ${entries.length} participaciones conocidas`}
       </p>
       <div className="character-breakdown">
         {players.map((p) => {
@@ -769,6 +774,15 @@ export function CharacterStat({
       <div className="character-positions">
         {players.map((p) => {
           const rows = entries.filter((e) => e.playerId === p.id);
+          if (duel)
+            return (
+              <p key={p.id}>
+                {p.name}:{" "}
+                {characterWins.filter((w) => w.playerId === p.id).length} V ·{" "}
+                {losses.filter((w) => w.opponentId === p.id).length} D{" "}
+                <small>(victorias/derrotas)</small>
+              </p>
+            );
           return (
             <p key={p.id}>
               {p.name}: {rows.reduce((n, e) => n + e.points, 0)} pts ·{" "}

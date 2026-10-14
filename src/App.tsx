@@ -144,10 +144,36 @@ export default function App() {
     () => statistics(filtered, players),
     [filtered, players],
   );
-  const playedCharacters = useMemo(
-    () => new Set(filtered.flatMap((w) => w.characters ?? [w.characterId])),
-    [filtered],
+  const plantelWins = useMemo(
+    () =>
+      filterPeriod(
+        allWins.filter((w) =>
+          charactersLeague === "duel"
+            ? w.league === "duel"
+            : w.league !== "duel",
+        ),
+        periodBounds(period, new Date(), custom),
+      ),
+    [allWins, charactersLeague, period, custom, today],
   );
+  const playedCharacters = useMemo(
+    () =>
+      new Set(
+        plantelWins.flatMap((w) =>
+          w.league === "duel"
+            ? [w.characterId, w.opponentCharacterId ?? ""]
+            : (w.characters ?? [w.characterId]),
+        ),
+      ),
+    [plantelWins],
+  );
+  const plantelVictories = new Map<string, number>();
+  for (const w of plantelWins)
+    if (w.characterId)
+      plantelVictories.set(
+        w.characterId,
+        (plantelVictories.get(w.characterId) ?? 0) + 1,
+      );
   const allStats = useMemo(() => statistics(wins, players), [wins, players]);
   const latest = useMemo(
     () =>
@@ -739,7 +765,7 @@ export default function App() {
               )}
             </>
           )}
-          {page === "characters" && charactersLeague === "trio" && (
+          {page === "characters" && (
             <>
               <div className="panel favorites-panel">
                 <h2>El favorito de cada jugador</h2>
@@ -748,9 +774,17 @@ export default function App() {
                 </p>
                 <div className="favorite-players">
                   {players.map((p) => {
-                    const s = statistics(
-                      filtered.filter((w) => w.playerId === p.id),
-                      [p],
+                    const counts = new Map<string, number>();
+                    for (const w of plantelWins.filter(
+                      (w) => w.playerId === p.id && w.characterId,
+                    ))
+                      counts.set(
+                        w.characterId,
+                        (counts.get(w.characterId) ?? 0) + 1,
+                      );
+                    const maximum = Math.max(0, ...counts.values());
+                    const topCharacters = [...counts].filter(
+                      ([, n]) => n === maximum,
                     );
                     return (
                       <div key={p.id}>
@@ -760,7 +794,7 @@ export default function App() {
                         />
                         <strong>{p.name}</strong>
                         <p>
-                          {s.topCharacters
+                          {topCharacters
                             .map(([id]) => fighterById.get(id)?.name)
                             .join(" · ") || "Todavía sin victorias"}
                         </p>
@@ -770,7 +804,10 @@ export default function App() {
                 </div>
               </div>
               <div className="section-heading">
-                <h2>Ranking de luchadores por puntos</h2>
+                <h2>
+                  Ranking de luchadores por{" "}
+                  {charactersLeague === "duel" ? "victorias" : "puntos"}
+                </h2>
                 <label className="search">
                   <Search size={17} />
                   <input
@@ -782,9 +819,9 @@ export default function App() {
                 </label>
               </div>
               <p className="muted small-note">
-                Los puntos cuentan los puestos registrados. Los porcentajes
-                muestran la aportación de cada personaje a las victorias de su
-                jugador.
+                {charactersLeague === "duel"
+                  ? "Las victorias y derrotas cuentan los personajes registrados en los duelos. Los porcentajes muestran la aportación a las victorias de cada jugador."
+                  : "Los puntos cuentan los puestos registrados. Los porcentajes muestran la aportación de cada personaje a las victorias de su jugador."}
               </p>
               <div className="character-stats-grid">
                 {[...fighters]
@@ -793,25 +830,24 @@ export default function App() {
                       playedCharacters.has(f.id) &&
                       normalize(f.name).includes(normalize(characterQuery)),
                   )
-                  .sort(
-                    (a, b) =>
-                      (stats.characterPointsRanking.find(
-                        ([id]) => id === b.id,
-                      )?.[1] ?? 0) -
-                      (stats.characterPointsRanking.find(
-                        ([id]) => id === a.id,
-                      )?.[1] ?? 0),
+                  .sort((a, b) =>
+                    charactersLeague === "duel"
+                      ? (plantelVictories.get(b.id) ?? 0) -
+                        (plantelVictories.get(a.id) ?? 0)
+                      : (stats.characterPointsRanking.find(
+                          ([id]) => id === b.id,
+                        )?.[1] ?? 0) -
+                        (stats.characterPointsRanking.find(
+                          ([id]) => id === a.id,
+                        )?.[1] ?? 0),
                   )
                   .map((f) => (
                     <CharacterStat
                       key={f.id}
                       id={f.id}
-                      count={
-                        stats.characterRanking.find(
-                          ([id]) => id === f.id,
-                        )?.[1] ?? 0
-                      }
-                      wins={filtered}
+                      count={plantelVictories.get(f.id) ?? 0}
+                      wins={plantelWins}
+                      duel={charactersLeague === "duel"}
                       players={players}
                       favorite={favorites.includes(f.id)}
                       onFavorite={() => toggleFavorite(f.id)}
@@ -904,32 +940,6 @@ export default function App() {
                   selectedCharacter={historyCharacter}
                 />
               )}
-            </>
-          )}
-          {page === "characters" && charactersLeague === "duel" && (
-            <>
-              <div className="section-heading">
-                <h2>Personajes jugados · 1vs1</h2>
-                <label className="search">
-                  <Search size={17} />
-                  <input
-                    placeholder="Buscar luchador"
-                    aria-label="Buscar en estadísticas de personajes"
-                    value={characterQuery}
-                    onChange={(e) => setCharacterQuery(e.target.value)}
-                  />
-                </label>
-              </div>
-              <DuelLeague
-                players={players}
-                wins={allWins}
-                onChange={notify}
-                databaseName={syncState.databaseName}
-                charactersOnly
-                selectedPeriod={period}
-                selectedCustom={custom}
-                selectedQuery={characterQuery}
-              />
             </>
           )}
           {page === "stats" && statsLeague === "duel" && (

@@ -545,6 +545,35 @@ test("1vs1: ligas separadas, rivales, edición, recarga y eliminación", async (
     .click();
   await expect(page.locator(".character-stat")).toHaveCount(2);
   await expect(
+    page.locator(".favorites-panel .favorite-players"),
+  ).toContainText("Andrés");
+  await expect(
+    page.getByRole("heading", {
+      name: "Ranking de luchadores por victorias",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.locator(".character-stat .character-stat-top .portrait.large"),
+  ).toHaveCount(2);
+  await page
+    .getByRole("button", { name: "Añadir a favoritos: Kirby", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", {
+      name: "Quitar de favoritos: Kirby",
+      exact: true,
+    }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page
+      .locator(".character-stat")
+      .filter({
+        has: page.getByRole("heading", { name: "Link", exact: true }),
+      }),
+  ).toContainText("1 derrotas");
+
+  await expect(
     page.getByRole("heading", { name: "Link", exact: true }),
   ).toBeVisible();
   await expect(
@@ -569,15 +598,21 @@ test("1vs1: ligas separadas, rivales, edición, recarga y eliminación", async (
     .getByRole("group", { name: "Liga del historial" })
     .getByRole("button", { name: "1vs1", exact: true })
     .click();
-  await page.getByRole("combobox", { name: "Luchador", exact: true }).selectOption("02");
+  await page
+    .getByRole("combobox", { name: "Luchador", exact: true })
+    .selectOption("02");
   await expect(
     page.getByText("Andrés gana a Rafa", { exact: true }),
   ).toHaveCount(0);
-  await page.getByRole("combobox", { name: "Luchador", exact: true }).selectOption("03");
+  await page
+    .getByRole("combobox", { name: "Luchador", exact: true })
+    .selectOption("03");
   await expect(
     page.getByText("Andrés gana a Rafa", { exact: true }),
   ).toBeVisible();
-  await page.getByRole("combobox", { name: "Luchador", exact: true }).selectOption("");
+  await page
+    .getByRole("combobox", { name: "Luchador", exact: true })
+    .selectOption("");
   await page.getByRole("button", { name: "Eliminar", exact: true }).click();
   await page
     .getByRole("dialog")
