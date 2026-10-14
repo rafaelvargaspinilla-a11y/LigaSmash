@@ -42,6 +42,8 @@ export interface Win {
   characterId: string;
   timestamp: string;
   localDate: string;
+  league?: "duel";
+  opponentId?: PlayerId;
   placements?: Placements;
   characters?: MatchCharacters;
 }
@@ -50,7 +52,7 @@ export interface Preferences {
   favorites: string[];
 }
 export interface Backup {
-  schemaVersion: 1 | 2;
+  schemaVersion: 1 | 2 | 3;
   exportedAt: string;
   players: Player[];
   wins: Win[];
@@ -123,6 +125,7 @@ export function filterPeriod(wins: Win[], bounds: [string, string]): Win[] {
   );
 }
 export function pointsFor(win: Win, player: PlayerId): number {
+  if (win.league === "duel") return 0;
   return win.playerId === player ? 3 : win.placements?.[1] === player ? 1 : 0;
 }
 export function validCharacters(
@@ -152,6 +155,7 @@ export function validPlacements(
   );
 }
 export function statistics(wins: Win[], players: Player[]) {
+  wins = wins.filter((w) => w.league !== "duel");
   const counts = new Map<PlayerId, number>(playerIds.map((id) => [id, 0]));
   const points = new Map<PlayerId, number>(playerIds.map((id) => [id, 0]));
   const seconds = new Map<PlayerId, number>(playerIds.map((id) => [id, 0]));
@@ -254,13 +258,13 @@ export function validDate(value: unknown): value is string {
 export function validateBackup(input: unknown): Backup {
   const fail = () => {
     throw new Error(
-      "Copia no válida. Se requiere JSON de Smash Tracker con esquema 1 o 2 y datos correctos.",
+      "Copia no válida. Se requiere JSON de Smash Tracker con esquema 1, 2 o 3 y datos correctos.",
     );
   };
   if (!input || typeof input !== "object") return fail();
   const b = input as Partial<Backup>;
   if (
-    (b.schemaVersion !== 1 && b.schemaVersion !== 2) ||
+    ![1, 2, 3].includes(b.schemaVersion!) ||
     !Array.isArray(b.players) ||
     b.players.length !== 3 ||
     !Array.isArray(b.wins) ||
@@ -292,23 +296,36 @@ export function validateBackup(input: unknown): Backup {
       w.id.length > 100 ||
       ids.has(w.id) ||
       !playerIds.includes(w.playerId) ||
-      !fighterById.has(w.characterId) ||
+      (w.league === "duel"
+        ? w.characterId !== ""
+        : !fighterById.has(w.characterId)) ||
+      (w.league !== undefined &&
+        (w.league !== "duel" ||
+          b.schemaVersion !== 3 ||
+          !playerIds.includes(w.opponentId!) ||
+          w.opponentId === w.playerId ||
+          w.placements !== undefined ||
+          w.characters !== undefined)) ||
+      (w.league === undefined && w.opponentId !== undefined) ||
       typeof w.timestamp !== "string" ||
       !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(w.timestamp) ||
       !Number.isFinite(Date.parse(w.timestamp)) ||
       new Date(w.timestamp).toISOString() !== w.timestamp ||
       !validDate(w.localDate) ||
       (w.placements !== undefined &&
-        (b.schemaVersion !== 2 ||
+        (b.schemaVersion === 1 ||
           !validPlacements(w.placements, w.playerId))) ||
       (w.characters !== undefined &&
-        (b.schemaVersion !== 2 ||
+        (b.schemaVersion === 1 ||
           !w.placements ||
           !validCharacters(w.characters, w.characterId)))
     )
       return fail();
     ids.add(w.id);
     return {
+      ...(w.league === "duel"
+        ? { league: "duel" as const, opponentId: w.opponentId }
+        : {}),
       id: w.id,
       playerId: w.playerId,
       characterId: w.characterId,
@@ -323,7 +340,7 @@ export function validateBackup(input: unknown): Backup {
   if (b.favorites.some((id) => typeof id !== "string" || !fighterById.has(id)))
     return fail();
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     exportedAt: b.exportedAt,
     players,
     wins,
@@ -333,6 +350,8 @@ export function validateBackup(input: unknown): Backup {
 
 export function sameResult(a: Win, b: Win) {
   return (
+    a.league === b.league &&
+    a.opponentId === b.opponentId &&
     a.id === b.id &&
     a.playerId === b.playerId &&
     a.characterId === b.characterId &&

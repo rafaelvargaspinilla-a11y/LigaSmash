@@ -161,7 +161,7 @@ describe("validación de copias", () => {
     "overflowTimestamp",
   ])("rechaza %s sin alterar datos", (type) => {
     const b = backup();
-    if (type === "schema") b.schemaVersion = 3;
+    if (type === "schema") b.schemaVersion = 9;
     if (type === "player") b.wins[0].playerId = "p9" as Win["playerId"];
     if (type === "fighter") b.wins[0].characterId = "999";
     if (type === "date") b.wins[0].localDate = "2026-02-30";
