@@ -46,6 +46,7 @@ import {
 } from "./components";
 import { colors, nameOf, indexOf, dateLabel, errorText } from "./ui";
 import DuelLeague from "./DuelLeague";
+import JornadaOverview from "./JornadaOverview";
 import SharedSettings from "./SharedSettings";
 import {
   subscribeSync,
@@ -419,7 +420,7 @@ export default function App() {
                 {
                   {
                     duel: "Duelos entre amigos. Cada victoria cuenta en su propia liga.",
-                    home: "Tres jugadores. Un ganador. Una rivalidad que no termina.",
+                    home: "Tres jugadores. Diez partidas. Una jornada para decidirlo.",
                     stats: "Descubre quién domina y cómo cambia la partida.",
                     characters: "Los luchadores que os llevan a la victoria.",
                     history:
@@ -516,6 +517,13 @@ export default function App() {
               />
             </div>
           )}
+          {page === "home" && (
+            <JornadaOverview
+              wins={wins}
+              players={players}
+              onRecord={() => setShowWin(true)}
+            />
+          )}
           {(page === "home" ||
             (page === "stats" && statsLeague === "trio")) && (
             <>
@@ -550,7 +558,7 @@ export default function App() {
                   </strong>
                   <small>
                     {(page === "home" ? allStats : stats).leaders.length
-                      ? "Clasificación por puntos · 3 / 1 / 0"
+                      ? "3 / 1 / 0 · Final de jornada 6 / 2 / 0"
                       : "La primera victoria puede ser tuya"}
                   </small>
                 </section>

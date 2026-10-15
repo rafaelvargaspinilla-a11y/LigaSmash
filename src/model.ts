@@ -45,6 +45,7 @@ export interface Win {
   league?: "duel";
   opponentId?: PlayerId;
   opponentCharacterId?: string;
+  jornada?: { id: string; game: number };
   placements?: Placements;
   characters?: MatchCharacters;
 }
@@ -53,7 +54,7 @@ export interface Preferences {
   favorites: string[];
 }
 export interface Backup {
-  schemaVersion: 1 | 2 | 3 | 4;
+  schemaVersion: 1 | 2 | 3 | 4 | 5;
   exportedAt: string;
   players: Player[];
   wins: Win[];
@@ -127,7 +128,11 @@ export function filterPeriod(wins: Win[], bounds: [string, string]): Win[] {
 }
 export function pointsFor(win: Win, player: PlayerId): number {
   if (win.league === "duel") return 0;
-  return win.playerId === player ? 3 : win.placements?.[1] === player ? 1 : 0;
+  const multiplier = win.jornada?.game === 10 ? 2 : 1;
+  return (
+    (win.playerId === player ? 3 : win.placements?.[1] === player ? 1 : 0) *
+    multiplier
+  );
 }
 export function validCharacters(
   input: unknown,
@@ -259,13 +264,13 @@ export function validDate(value: unknown): value is string {
 export function validateBackup(input: unknown): Backup {
   const fail = () => {
     throw new Error(
-      "Copia no válida. Se requiere JSON de Smash Tracker con esquema 1, 2, 3 o 4 y datos correctos.",
+      "Copia no válida. Se requiere JSON de Smash Tracker con esquema 1 a 5 y datos correctos.",
     );
   };
   if (!input || typeof input !== "object") return fail();
   const b = input as Partial<Backup>;
   if (
-    ![1, 2, 3, 4].includes(b.schemaVersion!) ||
+    ![1, 2, 3, 4, 5].includes(b.schemaVersion!) ||
     !Array.isArray(b.players) ||
     b.players.length !== 3 ||
     !Array.isArray(b.wins) ||
@@ -300,14 +305,14 @@ export function validateBackup(input: unknown): Backup {
       (w.league === "duel"
         ? !(w.characterId === "" && w.opponentCharacterId === undefined) &&
           !(
-            b.schemaVersion === 4 &&
+            b.schemaVersion! >= 4 &&
             fighterById.has(w.characterId) &&
             fighterById.has(w.opponentCharacterId!)
           )
         : !fighterById.has(w.characterId)) ||
       (w.league !== undefined &&
         (w.league !== "duel" ||
-          (b.schemaVersion !== 3 && b.schemaVersion !== 4) ||
+          b.schemaVersion! < 3 ||
           !playerIds.includes(w.opponentId!) ||
           w.opponentId === w.playerId ||
           w.placements !== undefined ||
@@ -319,6 +324,17 @@ export function validateBackup(input: unknown): Backup {
       !Number.isFinite(Date.parse(w.timestamp)) ||
       new Date(w.timestamp).toISOString() !== w.timestamp ||
       !validDate(w.localDate) ||
+      (w.jornada !== undefined &&
+        (b.schemaVersion !== 5 ||
+          !w.jornada ||
+          typeof w.jornada.id !== "string" ||
+          !/^[a-f0-9-]{36}$/.test(w.jornada.id) ||
+          !Number.isInteger(w.jornada.game) ||
+          w.jornada.game < 1 ||
+          w.jornada.game > 10 ||
+          w.league !== undefined ||
+          !w.placements ||
+          !w.characters)) ||
       (w.placements !== undefined &&
         (b.schemaVersion === 1 ||
           !validPlacements(w.placements, w.playerId))) ||
@@ -339,6 +355,7 @@ export function validateBackup(input: unknown): Backup {
               : {}),
           }
         : {}),
+      ...(w.jornada ? { jornada: { ...w.jornada } } : {}),
       id: w.id,
       playerId: w.playerId,
       characterId: w.characterId,
@@ -350,10 +367,11 @@ export function validateBackup(input: unknown): Backup {
         : {}),
     };
   });
+  validateJornadas(wins);
   if (b.favorites.some((id) => typeof id !== "string" || !fighterById.has(id)))
     return fail();
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     exportedAt: b.exportedAt,
     players,
     wins,
@@ -366,6 +384,8 @@ export function sameResult(a: Win, b: Win) {
     a.league === b.league &&
     a.opponentId === b.opponentId &&
     a.opponentCharacterId === b.opponentCharacterId &&
+    a.jornada?.id === b.jornada?.id &&
+    a.jornada?.game === b.jornada?.game &&
     a.id === b.id &&
     a.playerId === b.playerId &&
     a.characterId === b.characterId &&
@@ -394,9 +414,82 @@ export function matchEntries(win: Win) {
             playerId,
             characterId,
             position: index + 1,
-            points: [3, 1, 0][index],
+            points: pointsFor(win, playerId),
           },
         ]
       : [];
   });
+}
+
+export function roundOf(game: number) {
+  return Math.min(4, Math.ceil(game / 3));
+}
+export function jornadas(wins: Win[]) {
+  const groups = new Map<string, Win[]>();
+  for (const w of wins)
+    if (w.jornada)
+      groups.set(w.jornada.id, [...(groups.get(w.jornada.id) ?? []), w]);
+  return [...groups]
+    .map(([id, games]) => ({
+      id,
+      games: games.sort((a, b) => a.jornada!.game - b.jornada!.game),
+      started: games.reduce(
+        (date, w) => (w.timestamp < date ? w.timestamp : date),
+        games[0].timestamp,
+      ),
+    }))
+    .sort(
+      (a, b) => a.started.localeCompare(b.started) || a.id.localeCompare(b.id),
+    );
+}
+export function jornadaSlot(
+  wins: Win[],
+  newId: string,
+): { id: string; game: number } {
+  const last = jornadas(wins).at(-1);
+  if (!last || last.games.length === 10) return { id: newId, game: 1 };
+  return {
+    id: last.id,
+    game: Array.from({ length: 10 }, (_, i) => i + 1).find(
+      (n) => !last.games.some((w) => w.jornada!.game === n),
+    )!,
+  };
+}
+export function roundCharacters(
+  wins: Win[],
+  jornada: { id: string; game: number },
+  exceptId?: string,
+) {
+  const first = wins.find(
+    (w) =>
+      w.id !== exceptId &&
+      w.jornada?.id === jornada.id &&
+      roundOf(w.jornada.game) === roundOf(jornada.game),
+  );
+  if (!first) return undefined;
+  return Object.fromEntries(
+    first.placements!.map((p, i) => [p, first.characters![i]]),
+  ) as Record<PlayerId, string>;
+}
+export function validateJornadas(wins: Win[]) {
+  const slots = new Set<string>();
+  const choices = new Map<string, string>();
+  for (const w of wins)
+    if (w.jornada) {
+      const slot = w.jornada.id + ":" + w.jornada.game;
+      if (slots.has(slot))
+        throw new Error(
+          "Dos partidas ocupan el mismo puesto de una jornada. Revisa los cambios antes de sincronizar.",
+        );
+      slots.add(slot);
+      for (const [i, p] of w.placements!.entries()) {
+        const key = w.jornada.id + ":" + roundOf(w.jornada.game) + ":" + p;
+        const character = w.characters![i];
+        if (choices.has(key) && choices.get(key) !== character)
+          throw new Error(
+            "Cada jugador debe mantener su personaje durante las tres partidas de la ronda.",
+          );
+        choices.set(key, character);
+      }
+    }
 }

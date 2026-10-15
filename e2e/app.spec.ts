@@ -32,20 +32,22 @@ async function add(
       exact: true,
     })
     .click();
-  await dialog.getByLabel("Buscar luchador").fill(fighter);
-  await dialog.getByRole("button", { name: fighter, exact: true }).click();
-  for (const [slot, name] of [
-    [2, "Link"],
-    [3, "Kirby"],
-  ] as const) {
-    await dialog
-      .getByRole("button", {
-        name: `Personaje del puesto ${slot}`,
-        exact: true,
-      })
-      .click();
-    await dialog.getByLabel("Buscar luchador").fill(name);
-    await dialog.getByRole("button", { name, exact: true }).click();
+  if (await dialog.getByLabel("Buscar luchador").count()) {
+    await dialog.getByLabel("Buscar luchador").fill(fighter);
+    await dialog.getByRole("button", { name: fighter, exact: true }).click();
+    for (const [slot, name] of [
+      [2, "Link"],
+      [3, "Kirby"],
+    ] as const) {
+      await dialog
+        .getByRole("button", {
+          name: `Personaje del puesto ${slot}`,
+          exact: true,
+        })
+        .click();
+      await dialog.getByLabel("Buscar luchador").fill(name);
+      await dialog.getByRole("button", { name, exact: true }).click();
+    }
   }
   await dialog
     .getByRole("button", { name: "Registrar partida", exact: true })
@@ -382,7 +384,7 @@ test("podio, personajes y puntos persisten y se editan juntos", async ({
   const backup = JSON.parse(
     readFileSync((await (await download).path())!, "utf8"),
   );
-  expect(backup.schemaVersion).toBe(4);
+  expect(backup.schemaVersion).toBe(5);
   expect(backup.wins[0].placements).toEqual(["p1", "p2", "p3"]);
   expect(backup.wins[0].characters).toEqual(["01", "03", "06"]);
   await page
@@ -566,11 +568,9 @@ test("1vs1: ligas separadas, rivales, edición, recarga y eliminación", async (
     }),
   ).toHaveAttribute("aria-pressed", "true");
   await expect(
-    page
-      .locator(".character-stat")
-      .filter({
-        has: page.getByRole("heading", { name: "Link", exact: true }),
-      }),
+    page.locator(".character-stat").filter({
+      has: page.getByRole("heading", { name: "Link", exact: true }),
+    }),
   ).toContainText("1 derrotas");
 
   await expect(
@@ -620,5 +620,81 @@ test("1vs1: ligas separadas, rivales, edición, recarga y eliminación", async (
     .click();
   await expect(
     page.getByText("Todavía no hay duelos en este periodo."),
+  ).toBeVisible();
+});
+
+test("jornada: diez partidas, personajes fijos y final de seis/dos puntos", async ({
+  page,
+}) => {
+  await setup(page);
+  for (let n = 1; n <= 10; n++) {
+    await page
+      .getByRole("button", { name: "Registrar partida", exact: true })
+      .click();
+    const form = page.getByRole("dialog");
+    await expect(form.locator(".jornada-form-note")).toContainText(
+      `Partida ${n} de 10`,
+    );
+    await form.getByRole("button", { name: "Rafa", exact: true }).click();
+    await form
+      .getByRole("button", { name: "Segundo: Carlos", exact: true })
+      .click();
+    if ([1, 4, 7, 10].includes(n)) {
+      for (const [slot, fighter] of [
+        [1, "Mario"],
+        [2, "Link"],
+        [3, "Kirby"],
+      ] as const) {
+        await form
+          .getByRole("button", {
+            name: `Personaje del puesto ${slot}`,
+            exact: true,
+          })
+          .click();
+        await form.getByLabel("Buscar luchador").fill(fighter);
+        await form.getByRole("button", { name: fighter, exact: true }).click();
+      }
+    } else {
+      await expect(form.getByLabel("Buscar luchador")).toHaveCount(0);
+      await expect(form).toContainText("Personajes fijados");
+    }
+    if (n === 10)
+      await expect(form).toContainText("Podio completo · 6 / 2 / 0");
+    await form
+      .getByRole("button", { name: "Registrar partida", exact: true })
+      .click();
+    await expect(form).toBeHidden();
+  }
+  await expect(page.locator(".jornada-panel")).toContainText(
+    "10 / 10 PARTIDAS",
+  );
+  await expect(
+    page
+      .locator(".ranking-card")
+      .filter({ has: page.getByRole("heading", { name: "Rafa", exact: true }) })
+      .locator(".player-points"),
+  ).toContainText("33");
+  await expect(
+    page
+      .locator(".ranking-card")
+      .filter({
+        has: page.getByRole("heading", { name: "Carlos", exact: true }),
+      })
+      .locator(".player-points"),
+  ).toContainText("11");
+  await page.setViewportSize({ width: 320, height: 740 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page
+    .getByRole("button", { name: "Empezar nueva jornada", exact: true })
+    .click();
+  await expect(
+    page.getByRole("dialog").locator(".jornada-form-note"),
+  ).toContainText("Partida 1 de 10");
+  await expect(
+    page.getByRole("dialog").getByLabel("Buscar luchador"),
   ).toBeVisible();
 });
