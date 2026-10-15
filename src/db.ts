@@ -1,6 +1,7 @@
 import Dexie, { type Table } from "dexie";
 import {
   makeWin,
+  validateJornadas,
   sameResult,
   type Placements,
   type MatchCharacters,
@@ -77,8 +78,12 @@ export class TrackerDB extends Dexie {
     date = new Date(),
     placements?: Placements,
     characters?: MatchCharacters,
+    jornada?: Win["jornada"],
   ) {
-    const w = makeWin(playerId, characterId, date, placements, characters);
+    const w = {
+      ...makeWin(playerId, characterId, date, placements, characters),
+      ...(jornada ? { jornada } : {}),
+    };
     await this.transaction(
       "rw",
       this.players,
@@ -87,6 +92,14 @@ export class TrackerDB extends Dexie {
       async () => {
         if ((await this.players.count()) !== 3)
           throw new Error("Configura los tres jugadores primero.");
+        if (jornada)
+          validateBackup({
+            schemaVersion: 5,
+            exportedAt: date.toISOString(),
+            players: await this.players.toArray(),
+            wins: [...(await this.wins.toArray()), w],
+            favorites: [],
+          });
         await this.wins.add(w);
         await this.enqueue({ kind: "add", win: w });
       },
@@ -116,7 +129,7 @@ export class TrackerDB extends Dexie {
         String(date.getDate()).padStart(2, "0"),
     };
     validateBackup({
-      schemaVersion: 4,
+      schemaVersion: 5,
       exportedAt: date.toISOString(),
       players: await this.players.toArray(),
       wins: [win],
@@ -155,7 +168,15 @@ export class TrackerDB extends Dexie {
         throw new Error(
           "Selecciona los tres personajes al editar esta partida.",
         );
-      const after = { ...w, id };
+      const after = {
+        ...w,
+        id,
+        ...(before.jornada ? { jornada: before.jornada } : {}),
+      };
+      validateJornadas([
+        ...(await this.wins.toArray()).filter((row) => row.id !== id),
+        after,
+      ]);
       await this.wins.put(after);
       await this.enqueue({ kind: "edit", before, after });
     });
@@ -176,7 +197,7 @@ export class TrackerDB extends Dexie {
       this.wins,
       this.preferences,
       async () => ({
-        schemaVersion: 4,
+        schemaVersion: 5,
         exportedAt: new Date().toISOString(),
         players: await this.players.toArray(),
         wins: await this.wins.toArray(),
@@ -196,6 +217,10 @@ export class TrackerDB extends Dexie {
         const players = await this.players.toArray();
         const existing = await this.wins.toArray();
         const byId = new Map(existing.map((w) => [w.id, w]));
+        validateJornadas([
+          ...existing,
+          ...b.wins.filter((w) => !byId.has(w.id)),
+        ]);
         let added = 0;
         let duplicates = 0;
         for (const w of b.wins) {

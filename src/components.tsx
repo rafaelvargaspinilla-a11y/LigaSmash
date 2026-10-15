@@ -13,6 +13,9 @@ import { db } from "./db";
 import { fighters, fighterById, normalize } from "./characters";
 import {
   localDate,
+  jornadaSlot,
+  roundOf,
+  roundCharacters,
   pointsFor,
   type Placements,
   type MatchCharacters,
@@ -156,6 +159,12 @@ export function WinForm({
   onClose: () => void;
   onError: (s: string) => void;
 }) {
+  const [newJornadaId] = useState(() => crypto.randomUUID());
+  const jornada = editing ? editing.jornada : jornadaSlot(wins, newJornadaId);
+  const fixedCharacters = jornada
+    ? roundCharacters(wins, jornada, editing?.id)
+    : undefined;
+  const doublePoints = jornada?.game === 10;
   const [player, setPlayer] = useState<PlayerId | undefined>(editing?.playerId);
   const [second, setSecond] = useState<PlayerId | undefined>(
     editing?.placements?.[1],
@@ -165,7 +174,7 @@ export function WinForm({
     player && second && third ? [player, second, third] : undefined;
   const [chosen, setChosen] = useState<Partial<Record<PlayerId, string>>>(
     () => {
-      const initial: Partial<Record<PlayerId, string>> = {};
+      const initial: Partial<Record<PlayerId, string>> = { ...fixedCharacters };
       if (editing) {
         initial[editing.playerId] = editing.characterId;
         editing.placements?.forEach((id, index) => {
@@ -203,7 +212,7 @@ export function WinForm({
     normalize(f.name).includes(normalize(query)),
   );
   const selectCharacter = (id: string) => {
-    if (!activePlayer) return;
+    if (!activePlayer || fixedCharacters) return;
     const next = { ...chosen, [activePlayer]: id };
     setChosen(next);
     if (placements) {
@@ -220,7 +229,7 @@ export function WinForm({
       <button
         key={id}
         type="button"
-        disabled={!activePlayer}
+        disabled={!activePlayer || !!fixedCharacters}
         className={`fighter-tile ${character === id ? "selected" : ""}`}
         aria-label={f.name}
         aria-pressed={character === id}
@@ -271,6 +280,7 @@ export function WinForm({
                   date,
                   placements,
                   characters,
+                  jornada,
                 ),
               );
           } catch (e) {
@@ -281,8 +291,25 @@ export function WinForm({
           }
         }}
       >
+        {jornada && (
+          <div className="jornada-form-note">
+            <strong>
+              Partida {jornada.game} de 10 ·{" "}
+              {jornada.game === 10
+                ? "Ronda final"
+                : `Ronda ${roundOf(jornada.game)}`}
+            </strong>
+            <p>
+              {doublePoints
+                ? "Última partida · 6 / 2 / 0 puntos. Podéis elegir nuevos personajes."
+                : fixedCharacters
+                  ? "Personajes fijados para esta ronda. Solo cambia el orden del podio."
+                  : "Elegid los personajes: se mantendrán durante las tres partidas de esta ronda."}
+            </p>
+          </div>
+        )}
         <p className="step-label">
-          01 <span>Primer puesto · 3 puntos</span>
+          01 <span>Primer puesto · {doublePoints ? 6 : 3} puntos</span>
         </p>
         <div className="player-picker">
           {players.map((p) => (
@@ -310,7 +337,8 @@ export function WinForm({
           ))}
         </div>
         <p className="step-label">
-          02 <span>Segundo puesto · 1 punto</span>
+          02{" "}
+          <span>Segundo puesto · {doublePoints ? "2 puntos" : "1 punto"}</span>
         </p>
         <div className="player-picker second-picker">
           {players
@@ -368,7 +396,8 @@ export function WinForm({
                 }}
               >
                 <span>
-                  {index + 1}.º · {[3, 1, 0][index]} pts
+                  {index + 1}.º ·{" "}
+                  {[doublePoints ? 6 : 3, doublePoints ? 2 : 1, 0][index]} pts
                 </span>
                 {selected ? (
                   <Portrait id={selected} />
@@ -390,31 +419,35 @@ export function WinForm({
             ? `Selecciona el personaje de ${nameOf(players, activePlayer)} (${slot + 1}.º puesto)`
             : "Selecciona primero el podio"}
         </p>
-        <label className="search">
-          <Search size={18} />
-          <input
-            aria-label="Buscar luchador"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar entre 86 luchadores…"
-          />
-        </label>
-        {!query && quick.length > 0 && (
+        {!fixedCharacters && (
           <>
-            <p className="section-label">Favoritos y recientes</p>
-            <div className="fighter-grid quick-grid">{quick.map(tile)}</div>
+            <label className="search">
+              <Search size={18} />
+              <input
+                aria-label="Buscar luchador"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Buscar entre 86 luchadores…"
+              />
+            </label>
+            {!query && quick.length > 0 && (
+              <>
+                <p className="section-label">Favoritos y recientes</p>
+                <div className="fighter-grid quick-grid">{quick.map(tile)}</div>
+              </>
+            )}
+            <p className="section-label">
+              {query ? `${visible.length} resultados` : "Plantel completo"}
+              <span>Retratos oficiales</span>
+            </p>
+            <div className="fighter-grid roster-grid">
+              {visible.map((f) => tile(f.id))}
+              {!visible.length && (
+                <p className="muted">No hay luchadores con ese nombre.</p>
+              )}
+            </div>
           </>
         )}
-        <p className="section-label">
-          {query ? `${visible.length} resultados` : "Plantel completo"}
-          <span>Retratos oficiales</span>
-        </p>
-        <div className="fighter-grid roster-grid">
-          {visible.map((f) => tile(f.id))}
-          {!visible.length && (
-            <p className="muted">No hay luchadores con ese nombre.</p>
-          )}
-        </div>
         {editing && (
           <label className="date-edit">
             Fecha y hora local
@@ -430,7 +463,7 @@ export function WinForm({
         <div className="modal-footer">
           <span className="muted">
             {characters
-              ? "Podio completo · 3 / 1 / 0"
+              ? `Podio completo · ${doublePoints ? "6 / 2 / 0" : "3 / 1 / 0"}`
               : "Elige los tres personajes"}
           </span>
           <button className="primary" disabled={!characters || busy}>
@@ -663,7 +696,7 @@ export function WinRow({
                     {index + 1}.º {nameOf(players, id)} ·{" "}
                     {char ? fighterById.get(char)?.name : "Personaje pendiente"}
                   </span>
-                  <b>{[3, 1, 0][index]} pts</b>
+                  <b>{pointsFor(win, id)} pts</b>
                 </span>
               );
             })
@@ -673,6 +706,14 @@ export function WinRow({
         </div>
       </div>
       <div className="win-date">
+        {win.jornada && (
+          <small>
+            Partida {win.jornada.game}/10 ·{" "}
+            {win.jornada.game === 10
+              ? "FINAL ×2"
+              : `Ronda ${roundOf(win.jornada.game)}`}
+          </small>
+        )}
         <span>{dateLabel(win.localDate)}</span>
         <small>{formatTime(win)}</small>
       </div>

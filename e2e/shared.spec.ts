@@ -68,9 +68,7 @@ test("dos dispositivos: grupo privado, cambios offline, fusión y respuesta perd
     await bind(context, true);
     await bind(second);
     await page.goto("./");
-    await expect(
-      page.getByRole("heading", { name: "La liga." }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "La liga." })).toBeVisible();
     const add = async (p: typeof page, player: string, fighter: string) => {
       await p
         .getByRole("button", { name: "Registrar partida", exact: true })
@@ -85,20 +83,22 @@ test("dos dispositivos: grupo privado, cambios offline, fusión y respuesta perd
           exact: true,
         })
         .click();
-      await form.getByLabel("Buscar luchador", { exact: true }).fill(fighter);
-      await form.getByRole("button", { name: fighter, exact: true }).click();
-      for (const [slot, name] of [
-        [2, "Link"],
-        [3, "Kirby"],
-      ] as const) {
-        await form
-          .getByRole("button", {
-            name: `Personaje del puesto ${slot}`,
-            exact: true,
-          })
-          .click();
-        await form.getByLabel("Buscar luchador", { exact: true }).fill(name);
-        await form.getByRole("button", { name, exact: true }).click();
+      if (await form.getByLabel("Buscar luchador").count()) {
+        await form.getByLabel("Buscar luchador", { exact: true }).fill(fighter);
+        await form.getByRole("button", { name: fighter, exact: true }).click();
+        for (const [slot, name] of [
+          [2, "Link"],
+          [3, "Kirby"],
+        ] as const) {
+          await form
+            .getByRole("button", {
+              name: `Personaje del puesto ${slot}`,
+              exact: true,
+            })
+            .click();
+          await form.getByLabel("Buscar luchador", { exact: true }).fill(name);
+          await form.getByRole("button", { name, exact: true }).click();
+        }
       }
       await form
         .getByRole("button", { name: "Registrar partida", exact: true })
@@ -134,23 +134,27 @@ test("dos dispositivos: grupo privado, cambios offline, fusión y respuesta perd
     await expect(b.locator(".win-row")).toHaveCount(1);
     await add(b, "Carlos", "Daisy");
     await expect(page.locator(".win-row")).toHaveCount(2, { timeout: 15000 });
+    for (let game = 3; game <= 10; game++) await add(b, "Rafa", "Kirby");
+    const total = (target: import("@playwright/test").Page) =>
+      target.locator(".summary-card").first().locator("strong");
+    await expect(total(page)).toHaveText("10", { timeout: 15000 });
     offlineA = true;
     await context.setOffline(true);
     await add(page, "Andrés", "Sora");
     await page.reload();
-    await expect(page.locator(".win-row")).toHaveCount(3);
-    await expect(b.locator(".win-row")).toHaveCount(2);
+    await expect(total(page)).toHaveText("11");
+    await expect(total(b)).toHaveText("10");
     await add(b, "Rafa", "Kirby");
-    await expect(b.locator(".win-row")).toHaveCount(3);
+    await expect(total(b)).toHaveText("11");
     offlineA = false;
     await context.setOffline(false);
-    await expect(page.locator(".win-row")).toHaveCount(4, { timeout: 15000 });
-    await expect(b.locator(".win-row")).toHaveCount(4, { timeout: 15000 });
+    await expect(total(page)).toHaveText("12", { timeout: 15000 });
+    await expect(total(b)).toHaveText("12", { timeout: 15000 });
     dropNextReply = true;
     await add(b, "Carlos", "Cloud");
-    await expect(page.locator(".win-row")).toHaveCount(5, { timeout: 15000 });
+    await expect(total(page)).toHaveText("13", { timeout: 15000 });
     await b.reload();
-    await expect(b.locator(".win-row")).toHaveCount(5);
+    await expect(total(b)).toHaveText("13");
     await b.getByRole("button", { name: "Abrir ajustes" }).click();
     await expect(
       b.getByRole("dialog", { name: "Ajustes de la arena" }),
@@ -167,7 +171,7 @@ test("dos dispositivos: grupo privado, cambios offline, fusión y respuesta perd
         };
       }>("select public.smash_read_group($1)->'data' as data", [code])
     ).rows[0].data;
-    expect(remote.wins).toHaveLength(5);
+    expect(remote.wins).toHaveLength(13);
     expect(
       remote.wins.every(
         (w) =>
