@@ -830,7 +830,7 @@ a {
 }
 .favorite-players {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
 }
 .favorite-players > div {
@@ -932,7 +932,7 @@ a {
 .modal .form-stack {
   margin: 22px 0;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 15px;
 }
 .step-label {
@@ -950,7 +950,7 @@ a {
 }
 .player-picker {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 .player-picker button {
@@ -1612,14 +1612,18 @@ a {
   border-radius: 8px;
 }
 
-/* Safari focuses without auto-zoom when form controls use at least 16px.
-   Keep pinch-to-zoom available; include landscape iPhones and touch tablets. */
-@media (max-width: 850px), (pointer: coarse) {
-  :root input,
-  :root select,
-  :root textarea {
-    font-size: 16px;
-  }
+/* Native Safari controls need 16px in every orientation and input mode.
+   Preserve the user's ability to zoom manually. */
+:root input,
+:root select,
+:root textarea {
+  font-size: 16px;
+  min-width: 0;
+  max-width: 100%;
+}
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 .brand-mark {
   background: #101116;
@@ -1632,7 +1636,7 @@ a {
 }
 
 .second-picker {
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 .podium-third {
   margin: 14px 0;
@@ -1961,6 +1965,47 @@ a {
 .duel-fighter-grid .fighter-tile > span:last-child {
   min-width: 0;
   width: 100%;
+  overflow-wrap: anywhere;
+  justify-content: center;
+}
+
+/* Keep narrow content inside its panel, including native iOS date controls. */
+.app-shell,
+.app-shell main,
+.panel,
+.modal,
+.modal > header > h2 {
+  min-width: 0;
+}
+.modal {
+  overflow-x: hidden;
+}
+.modal > header > h2 {
+  overflow-wrap: anywhere;
+}
+.modal input[type="date"],
+.modal input[type="datetime-local"],
+.custom-dates input {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+input::-webkit-date-and-time-value {
+  min-width: 0;
+  text-align: left;
+}
+.roster-grid {
+  overflow-x: hidden;
+}
+.fighter-tile {
+  min-width: 0;
+  max-width: 100%;
+}
+.fighter-tile .portrait {
+  max-width: 100%;
+}
+.fighter-tile > span:last-of-type {
+  max-width: 100%;
   overflow-wrap: anywhere;
   justify-content: center;
 }
