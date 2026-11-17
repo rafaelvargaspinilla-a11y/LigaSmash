@@ -13,6 +13,8 @@ import { db } from "./db";
 import { fighters, fighterById, normalize } from "./characters";
 import {
   localDate,
+  isJornadaDuel,
+  type Season,
   jornadaSlot,
   roundOf,
   roundCharacters,
@@ -150,7 +152,9 @@ export function WinForm({
   onSaved,
   onClose,
   onError,
+  season,
 }: {
+  season?: Season;
   players: Player[];
   wins: Win[];
   favorites: string[];
@@ -160,7 +164,13 @@ export function WinForm({
   onError: (s: string) => void;
 }) {
   const [newJornadaId] = useState(() => crypto.randomUUID());
-  const jornada = editing ? editing.jornada : jornadaSlot(wins, newJornadaId);
+  const baseJornada = editing
+    ? editing.jornada
+    : jornadaSlot(wins, newJornadaId);
+  const jornada =
+    baseJornada && !editing && season?.format === "mixed"
+      ? { ...baseJornada, format: "mixed" as const }
+      : baseJornada;
   const fixedCharacters = jornada
     ? roundCharacters(wins, jornada, editing?.id)
     : undefined;
@@ -281,6 +291,7 @@ export function WinForm({
                   placements,
                   characters,
                   jornada,
+                  season?.id,
                 ),
               );
           } catch (e) {
@@ -301,7 +312,7 @@ export function WinForm({
             </strong>
             <p>
               {doublePoints
-                ? "Última partida · 6 / 2 / 0 puntos. Podéis elegir nuevos personajes."
+                ? "Última partida a seis vidas · 6 / 2 / 0 puntos. Podéis elegir nuevos personajes."
                 : fixedCharacters
                   ? "Personajes fijados para esta ronda. Solo cambia el orden del podio."
                   : "Elegid los personajes: se mantendrán durante las tres partidas de esta ronda."}
@@ -673,11 +684,13 @@ export function WinRow({
   players,
   onEdit,
   onDelete,
+  readOnly = false,
 }: {
   win: Win;
   players: Player[];
   onEdit: (w: Win) => void;
   onDelete: (w: Win) => void;
+  readOnly?: boolean;
 }) {
   return (
     <div className="win-row">
@@ -686,7 +699,20 @@ export function WinRow({
         <strong>{nameOf(players, win.playerId)}</strong>
         <span>{fighterById.get(win.characterId)?.name}</span>
         <div className="podium-history">
-          {win.placements ? (
+          {isJornadaDuel(win) ? (
+            <>
+              <span className="podium-line">
+                <Portrait id={win.characterId} />
+                <span>{nameOf(players, win.playerId)} · Victoria</span>
+                <b>2 pts</b>
+              </span>
+              <span className="podium-line">
+                <Portrait id={win.opponentCharacterId!} />
+                <span>{nameOf(players, win.opponentId!)} · Derrota</span>
+                <b>0 pts</b>
+              </span>
+            </>
+          ) : win.placements ? (
             win.placements.map((id, index) => {
               const char = characterAt(win, index);
               return (
@@ -719,6 +745,7 @@ export function WinRow({
       </div>
       <button
         className="icon-button"
+        disabled={readOnly}
         aria-label={`Editar partida de ${nameOf(players, win.playerId)} del ${win.localDate}`}
         onClick={() => onEdit(win)}
       >
@@ -726,6 +753,7 @@ export function WinRow({
       </button>
       <button
         className="icon-button danger"
+        disabled={readOnly}
         aria-label="Eliminar partida"
         onClick={() => onDelete(win)}
       >
@@ -815,6 +843,7 @@ export function CharacterStat({
       <div className="character-positions">
         {players.map((p) => {
           const rows = entries.filter((e) => e.playerId === p.id);
+          const podiumRows = rows.filter((e) => !e.duel);
           if (duel)
             return (
               <p key={p.id}>
@@ -827,10 +856,15 @@ export function CharacterStat({
           return (
             <p key={p.id}>
               {p.name}: {rows.reduce((n, e) => n + e.points, 0)} pts ·{" "}
-              {rows.filter((e) => e.position === 1).length}/
-              {rows.filter((e) => e.position === 2).length}/
-              {rows.filter((e) => e.position === 3).length}{" "}
-              <small>(1.º/2.º/3.º)</small>
+              {podiumRows.filter((e) => e.position === 1).length}/
+              {podiumRows.filter((e) => e.position === 2).length}/
+              {podiumRows.filter((e) => e.position === 3).length}{" "}
+              <small>
+                (1.º/2.º/3.º)
+                {rows.some((e) => e.duel)
+                  ? ` · Duelos: ${rows.filter((e) => e.duel && e.position === 1).length} V / ${rows.filter((e) => e.duel && e.position === 2).length} D`
+                  : ""}
+              </small>
             </p>
           );
         })}

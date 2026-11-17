@@ -28,6 +28,10 @@ import { db } from "./db";
 import { fighters, fighterById, normalize } from "./characters";
 import {
   filterPeriod,
+  firstSeason,
+  seasonOf,
+  isJornadaDuel,
+  jornadaSlot,
   localDate,
   periods,
   periodBounds,
@@ -47,6 +51,8 @@ import {
 import { colors, nameOf, indexOf, dateLabel, errorText } from "./ui";
 import DuelLeague from "./DuelLeague";
 import JornadaOverview from "./JornadaOverview";
+import SeasonControls from "./SeasonControls";
+import JornadaDuelForm from "./JornadaDuelForm";
 import SharedSettings from "./SharedSettings";
 import {
   subscribeSync,
@@ -70,18 +76,27 @@ export default function App() {
     };
   }, []);
   useEffect(() => {
+    setSelectedSeasonId("");
     setLastSaved(undefined);
     setEditing(undefined);
     setShowWin(false);
   }, [syncState.databaseName]);
   const data = useLiveQuery(
     async () =>
-      db.transaction("r", db.players, db.wins, db.preferences, async () => ({
-        databaseName: db.name,
-        players: await db.players.toArray(),
-        wins: await db.wins.toArray(),
-        favorites: (await db.preferences.get("main"))?.favorites ?? [],
-      })),
+      db.transaction(
+        "r",
+        db.players,
+        db.seasons,
+        db.wins,
+        db.preferences,
+        async () => ({
+          databaseName: db.name,
+          players: await db.players.toArray(),
+          seasons: await db.seasonList(),
+          wins: await db.wins.toArray(),
+          favorites: (await db.preferences.get("main"))?.favorites ?? [],
+        }),
+      ),
     [syncState.databaseName],
   );
   const [dbError, setDbError] = useState("");
@@ -93,6 +108,8 @@ export default function App() {
       .then(() => synchronize())
       .catch((e) => setDbError(errorText(e)));
   }, [syncState.databaseName]);
+  const [selectedSeasonId, setSelectedSeasonId] = useState("");
+  const [newJornadaId, setNewJornadaId] = useState(() => crypto.randomUUID());
   const [charactersLeague, setCharactersLeague] = useState<"trio" | "duel">(
     "trio",
   );
@@ -122,9 +139,16 @@ export default function App() {
   const fileRef = useRef<HTMLInputElement>(null);
   const players = data?.players ?? [];
   const allWins = data?.wins ?? [];
+  const seasons = data?.seasons ?? [firstSeason];
+  const selectedSeason =
+    seasons.find((s) => s.id === selectedSeasonId) ??
+    seasons.find((s) => !s.closed)!;
   const wins = useMemo(
-    () => allWins.filter((w) => w.league !== "duel"),
-    [allWins],
+    () =>
+      allWins.filter(
+        (w) => w.league !== "duel" && seasonOf(w) === selectedSeason.id,
+      ),
+    [allWins, selectedSeason.id],
   );
   const favorites = data?.favorites ?? [];
   const [today, setToday] = useState(localDate(new Date()));
@@ -151,11 +175,11 @@ export default function App() {
         allWins.filter((w) =>
           charactersLeague === "duel"
             ? w.league === "duel"
-            : w.league !== "duel",
+            : w.league !== "duel" && seasonOf(w) === selectedSeason.id,
         ),
         periodBounds(period, new Date(), custom),
       ),
-    [allWins, charactersLeague, period, custom, today],
+    [allWins, charactersLeague, period, custom, today, selectedSeason.id],
   );
   const playedCharacters = useMemo(
     () =>
@@ -163,7 +187,9 @@ export default function App() {
         plantelWins.flatMap((w) =>
           w.league === "duel"
             ? [w.characterId, w.opponentCharacterId ?? ""]
-            : (w.characters ?? [w.characterId]),
+            : isJornadaDuel(w)
+              ? [w.characterId, w.opponentCharacterId!]
+              : (w.characters ?? [w.characterId]),
         ),
       ),
     [plantelWins],
@@ -204,7 +230,10 @@ export default function App() {
           (w) =>
             (!historyPlayer || w.playerId === historyPlayer) &&
             (!historyCharacter ||
-              (w.characters ?? [w.characterId]).includes(historyCharacter)),
+              (isJornadaDuel(w)
+                ? [w.characterId, w.opponentCharacterId!]
+                : (w.characters ?? [w.characterId])
+              ).includes(historyCharacter)),
         )
         .sort(
           (a, b) =>
@@ -227,6 +256,15 @@ export default function App() {
     setError("");
     setNotice(message);
   };
+  const openRecord = () => {
+    setNewJornadaId(crypto.randomUUID());
+    setShowWin(true);
+  };
+  const nextJornada = {
+    ...jornadaSlot(wins, newJornadaId),
+    ...(selectedSeason.format === "mixed" ? { format: "mixed" as const } : {}),
+  };
+  const formJornada = editing ? editing.jornada : nextJornada;
   const save = (w: Win) => {
     if (!editing) setLastSaved(w.id);
     setShowWin(false);
@@ -432,14 +470,37 @@ export default function App() {
             {page === "home" && (
               <button
                 className="primary"
-                onClick={() => setShowWin(true)}
-                disabled={players.length !== 3}
+                onClick={openRecord}
+                disabled={players.length !== 3 || selectedSeason.closed}
               >
                 <Plus size={20} />
                 Registrar partida
               </button>
             )}
           </div>
+          {(page === "home" ||
+            (page === "stats" && statsLeague === "trio") ||
+            (page === "characters" && charactersLeague === "trio") ||
+            (page === "history" && historyLeague === "trio")) && (
+            <SeasonControls
+              key={syncState.databaseName}
+              seasons={seasons}
+              selected={selectedSeason}
+              onSelect={(id) => {
+                setSelectedSeasonId(id);
+                setEditing(undefined);
+                setShowWin(false);
+              }}
+              onCreated={(s) => {
+                setSelectedSeasonId(s.id);
+                setEditing(undefined);
+                setShowWin(false);
+                notify(
+                  "Nueva temporada iniciada. La clasificación empieza de cero.",
+                );
+              }}
+            />
+          )}
           {page === "stats" && (
             <div
               className="league-filter"
@@ -521,7 +582,9 @@ export default function App() {
             <JornadaOverview
               wins={wins}
               players={players}
-              onRecord={() => setShowWin(true)}
+              onRecord={openRecord}
+              format={selectedSeason.format}
+              readOnly={selectedSeason.closed}
             />
           )}
           {(page === "home" ||
@@ -540,7 +603,11 @@ export default function App() {
                       "es",
                     )}
                   </strong>
-                  <small>Siempre entre los tres jugadores</small>
+                  <small>
+                    {selectedSeason.format === "mixed"
+                      ? "6 partidas de tres · 3 duelos · 1 final"
+                      : "Siempre entre los tres jugadores"}
+                  </small>
                 </section>
                 <section className="summary-card leader-card">
                   <div className="summary-icon gold">
@@ -558,7 +625,9 @@ export default function App() {
                   </strong>
                   <small>
                     {(page === "home" ? allStats : stats).leaders.length
-                      ? "3 / 1 / 0 · Final de jornada 6 / 2 / 0"
+                      ? selectedSeason.format === "mixed"
+                        ? "3 / 1 / 0 · Duelos 2 / 0 · Final 6 / 2 / 0"
+                        : "3 / 1 / 0 · Final de jornada 6 / 2 / 0"
                       : "La primera victoria puede ser tuya"}
                   </small>
                 </section>
@@ -674,7 +743,7 @@ export default function App() {
                           <div style={{ width: `${p.percent}%` }} />
                         </div>
                         <div className="position-counts">
-                          <span>1.º {p.wins}</span>
+                          <span>1.º {p.firsts}</span>
                           <span>2.º {p.seconds}</span>
                           <span>3.º {p.thirds}</span>
                         </div>
@@ -740,6 +809,7 @@ export default function App() {
                             key={w.id}
                             win={w}
                             players={players}
+                            readOnly={selectedSeason.closed}
                             onEdit={setEditing}
                             onDelete={setDeleting}
                           />
@@ -762,8 +832,8 @@ export default function App() {
                     </p>
                     <button
                       className="primary"
-                      onClick={() => setShowWin(true)}
-                      disabled={players.length !== 3}
+                      onClick={openRecord}
+                      disabled={players.length !== 3 || selectedSeason.closed}
                     >
                       <Plus size={18} />
                       Nueva partida
@@ -917,6 +987,7 @@ export default function App() {
                           key={w.id}
                           win={w}
                           players={players}
+                          readOnly={selectedSeason.closed}
                           onEdit={setEditing}
                           onDelete={setDeleting}
                         />
@@ -992,20 +1063,40 @@ export default function App() {
           </button>
         ))}
       </nav>
-      {(showWin || editing) && players.length === 3 && (
-        <WinForm
-          players={players}
-          wins={wins}
-          favorites={favorites}
-          editing={editing}
-          onSaved={save}
-          onClose={() => {
-            setShowWin(false);
-            setEditing(undefined);
-          }}
-          onError={setError}
-        />
-      )}
+      {(showWin || editing) &&
+        players.length === 3 &&
+        isJornadaDuel({ jornada: formJornada }) && (
+          <JornadaDuelForm
+            key={editing?.id ?? formJornada!.id + ":" + formJornada!.game}
+            wins={wins}
+            players={players}
+            jornada={formJornada!}
+            seasonId={editing ? seasonOf(editing) : selectedSeason.id}
+            editing={editing}
+            onSaved={save}
+            onClose={() => {
+              setShowWin(false);
+              setEditing(undefined);
+            }}
+          />
+        )}
+      {(showWin || editing) &&
+        players.length === 3 &&
+        !isJornadaDuel({ jornada: formJornada }) && (
+          <WinForm
+            players={players}
+            wins={wins}
+            favorites={favorites}
+            season={selectedSeason}
+            editing={editing}
+            onSaved={save}
+            onClose={() => {
+              setShowWin(false);
+              setEditing(undefined);
+            }}
+            onError={setError}
+          />
+        )}
       {settings && pendingImport === undefined && (
         <Modal title="Ajustes de la arena" onClose={() => setSettings(false)}>
           <h3>Los tres jugadores</h3>

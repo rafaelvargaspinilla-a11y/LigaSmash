@@ -384,7 +384,7 @@ test("podio, personajes y puntos persisten y se editan juntos", async ({
   const backup = JSON.parse(
     readFileSync((await (await download).path())!, "utf8"),
   );
-  expect(backup.schemaVersion).toBe(5);
+  expect(backup.schemaVersion).toBe(6);
   expect(backup.wins[0].placements).toEqual(["p1", "p2", "p3"]);
   expect(backup.wins[0].characters).toEqual(["01", "03", "06"]);
   await page
@@ -697,4 +697,113 @@ test("jornada: diez partidas, personajes fijos y final de seis/dos puntos", asyn
   await expect(
     page.getByRole("dialog").getByLabel("Buscar luchador"),
   ).toBeVisible();
+});
+
+test("temporadas: resultado histórico, jornada mixta y duelos de dos puntos", async ({
+  page,
+}) => {
+  await setup(page);
+  await add(page);
+  await page
+    .getByRole("button", { name: "Nueva temporada", exact: true })
+    .click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Cerrar y empezar temporada", exact: true })
+    .click();
+  await expect(page.getByLabel("Temporada de La liga")).toContainText(
+    "Temporada 2",
+  );
+  await expect(
+    page
+      .locator(".ranking-card")
+      .filter({ has: page.getByRole("heading", { name: "Rafa", exact: true }) })
+      .locator(".player-points"),
+  ).toContainText("0");
+  for (let game = 1; game <= 6; game++) await add(page);
+  for (let game = 7; game <= 9; game++) {
+    await page
+      .getByRole("button", { name: "Registrar partida", exact: true })
+      .click();
+    const form = page.getByRole("dialog", {
+      name: "Registrar duelo de jornada",
+    });
+    await expect(form).toContainText(`Partida ${game} de 10`);
+    if (game === 7) {
+      for (const fighter of ["Mario", "Link"]) {
+        await form.getByLabel("Buscar personaje").fill(fighter);
+        await form.getByRole("button", { name: fighter, exact: true }).click();
+      }
+    }
+    if (game === 8) {
+      await form.getByLabel("Buscar personaje").fill("Kirby");
+      await form.getByRole("button", { name: "Kirby", exact: true }).click();
+    }
+    if (game === 9)
+      await expect(form.getByLabel("Buscar personaje")).toHaveCount(0);
+    await form
+      .getByRole("button", { name: "Registrar duelo", exact: true })
+      .click();
+    await expect(form).toBeHidden();
+  }
+  await add(page, "Rafa", "Sora");
+  await expect(page.locator(".jornada-panel")).toContainText(
+    "10 / 10 PARTIDAS",
+  );
+  await expect(
+    page
+      .locator(".ranking-card")
+      .filter({ has: page.getByRole("heading", { name: "Rafa", exact: true }) })
+      .locator(".player-points"),
+  ).toContainText("28");
+  await expect(
+    page
+      .locator(".ranking-card")
+      .filter({
+        has: page.getByRole("heading", { name: "Carlos", exact: true }),
+      })
+      .locator(".player-points"),
+  ).toContainText("10");
+  await page.getByLabel("Temporada de La liga").selectOption("season-1");
+  await expect(
+    page.getByRole("button", { name: "Registrar partida", exact: true }),
+  ).toBeDisabled();
+  await expect(
+    page
+      .locator(".ranking-card")
+      .filter({ has: page.getByRole("heading", { name: "Rafa", exact: true }) })
+      .locator(".player-points"),
+  ).toContainText("3");
+  await page
+    .locator(".sidebar nav:visible,.mobile-nav:visible")
+    .getByRole("button", { name: "Historial", exact: true })
+    .click();
+  await expect(page.locator(".win-row")).toHaveCount(1);
+  await expect(
+    page.getByRole("button", { name: /Editar partida de/ }),
+  ).toBeDisabled();
+  await page
+    .locator(".sidebar nav:visible,.mobile-nav:visible")
+    .getByRole("button", { name: "LaLiga", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Nueva temporada", exact: true })
+    .click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Cerrar y empezar temporada", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).toBeHidden();
+  await expect(page.getByLabel("Temporada de La liga")).toContainText("Temporada 3");
+  await page.reload();
+  await expect(page.getByLabel("Temporada de La liga")).toContainText(
+    "Temporada 3",
+  );
+  await expect(page.locator(".summary-card").first()).toContainText("0");
+  await page.setViewportSize({ width: 320, height: 740 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
 });

@@ -127,11 +127,14 @@ async function installRemote(target: TrackerDB, remote: RemoteState) {
   await target.transaction(
     "rw",
     target.players,
+    target.seasons,
     target.wins,
     target.pending,
     async () => {
       const pending = await target.pending.toArray();
       const merged = applyChanges(remote.data, pending);
+      await target.seasons.clear();
+      await target.seasons.bulkPut(merged.seasons!);
       await target.players.clear();
       await target.players.bulkPut(merged.players);
       await target.wins.clear();

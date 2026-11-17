@@ -2120,3 +2120,41 @@ input::-webkit-date-and-time-value {
     padding: 10px;
   }
 }
+
+.season-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 18px;
+  margin-bottom: 24px;
+}
+.season-controls label {
+  display: grid;
+  gap: 8px;
+  flex: 1 1 210px;
+  min-width: 0;
+}
+.season-controls select {
+  width: 100%;
+  min-width: 0;
+}
+.season-controls > p {
+  flex-basis: 100%;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.jornada-pairs {
+  display: grid;
+  gap: 6px;
+  padding-bottom: 12px;
+}
+@media (max-width: 500px) {
+  .season-controls > button {
+    width: 100%;
+  }
+}
+.season-controls p,
+.modal .duel-form p {
+  overflow-wrap: anywhere;
+}

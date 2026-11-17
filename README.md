@@ -123,3 +123,20 @@ Las copias compartidas usan el esquema 4. En Supabase existente, ejecuta `supaba
 **Jornadas de La liga:** cada jornada nueva contiene diez partidas: rondas 1–3 (partidas 1–3, 4–6 y 7–9) con personajes fijos por jugador, y ronda final (partida 10) con nueva elección y puntuación 6/2/0. Las nueve primeras mantienen 3/1/0: se reparten 44 puntos por jornada completa. Inicio muestra el avance, los personajes y la puntuación de la jornada; al completarla permite empezar otra. El historial identifica número de partida, ronda y final doble. Las partidas anteriores mantienen sus datos y 3/1/0 sin asignarlas artificialmente a jornadas; 1vs1 conserva sus reglas.
 
 Las copias y la sincronización usan esquema 5. Ejecuta `supabase/jornadas.sql` antes de publicar este cliente. No cambia tablas, códigos ni partidas: amplía validación y conserva la protección contra versiones antiguas. Las jornadas rechazan números de partida repetidos y cambios de personaje dentro de una ronda, también al importar o combinar cambios offline. Si dos dispositivos registran sin conexión el mismo hueco de una jornada, se muestra un conflicto en vez de duplicar esa partida. Al borrar una partida se puede rellenar su hueco; las otras partidas de la ronda mantienen sus personajes.
+
+## Temporadas y jornadas mixtas
+
+La liga tiene un selector de temporada en inicio, estadísticas, personajes e historial. Los datos anteriores pertenecen a **Temporada 1**, con sus reglas originales. **Nueva temporada → Cerrar y empezar temporada** conserva y cierra el resultado actual y crea otra con cero puntos; se puede elegir su nombre. Las temporadas cerradas se consultan sin modificar resultados. La liga 1vs1 independiente mantiene sus datos y reglas.
+
+Las nuevas temporadas usan diez partidas por jornada:
+
+- Ronda 1: partidas 1–3, todos contra todos, 3/1/0 puntos, personajes fijos.
+- Ronda 2: partidas 4–6, mismo sistema, con nueva elección de personajes.
+- Ronda 3: tres duelos, uno por pareja; 2 puntos al ganador y 0 al perdedor. Cada jugador mantiene su personaje en sus dos duelos de la ronda. Los duelos cuentan en La liga, separados de la liga 1vs1 independiente.
+- Final: partida 10, todos contra todos a seis vidas, nueva elección de personajes y 6/2/0 puntos.
+
+Se reparten 38 puntos por jornada mixta. Las jornadas históricas siguen repartiendo sus 44 puntos con las reglas anteriores. El número de temporadas y jornadas no está fijado; se mantiene el límite de tamaño del grupo compartido.
+
+Las copias usan el esquema 6 e incluyen temporadas y reglas de cada jornada. La importación conserva las temporadas actuales y rechaza conflictos; una copia completa se puede restaurar en una base vacía. El cierre se sincroniza con comprobación de los resultados conocidos: si otro dispositivo añade partidas antes de cerrar, se muestra un conflicto para revisar la clasificación. Los resultados de una temporada cerrada se protegen tanto en IndexedDB como en Supabase.
+
+Antes de publicar este cliente, ejecuta **`supabase/seasons.sql`** en Supabase SQL Editor. Es una actualización transaccional y repetible de funciones `smash_*`, compatible con los datos anteriores; no borra partidas, grupos ni códigos. No repitas migraciones antiguas después de esta actualización.

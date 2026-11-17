@@ -82,7 +82,7 @@ describe("podio 3 / 1 / 0", () => {
       favorites: [],
     };
     const normalized = validateBackup(b);
-    expect(normalized.schemaVersion).toBe(5);
+    expect(normalized.schemaVersion).toBe(6);
     expect(normalized.wins[0]).toEqual(w);
   });
   it("editar, completar podios antiguos, borrar y deshacer recalcula los puntos", async () => {

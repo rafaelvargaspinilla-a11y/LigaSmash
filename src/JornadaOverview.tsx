@@ -2,6 +2,7 @@ import {
   jornadas,
   pointsFor,
   roundCharacters,
+  duelPair,
   type Player,
   type Win,
 } from "./model";
@@ -11,14 +12,21 @@ export default function JornadaOverview({
   wins,
   players,
   onRecord,
+  format = "classic",
+  readOnly = false,
 }: {
   wins: Win[];
   players: Player[];
   onRecord: () => void;
+  format?: "classic" | "mixed";
+  readOnly?: boolean;
 }) {
   const all = jornadas(wins),
     latest = all.at(-1),
     complete = latest?.games.length === 10;
+  const mixed = latest
+    ? latest.games[0].jornada?.format === "mixed"
+    : format === "mixed";
   const next =
     Array.from({ length: 10 }, (_, i) => i + 1).find(
       (n) => !latest?.games.some((w) => w.jornada!.game === n),
@@ -27,7 +35,7 @@ export default function JornadaOverview({
     <section className="panel jornada-panel" aria-label="Jornada de La liga">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">3 + 3 + 3 + 1</p>
+          <p className="eyebrow">3 + 3 + {mixed ? "3 DUELOS" : "3"} + 1</p>
           <h2>
             {latest ? `Jornada ${all.length}` : "Vuestra primera jornada"}
           </h2>
@@ -35,8 +43,9 @@ export default function JornadaOverview({
         <span className="tag">{latest?.games.length ?? 0} / 10 PARTIDAS</span>
       </div>
       <p className="muted">
-        Tres rondas de tres partidas con personajes fijos. La partida final vale
-        el doble.
+        {mixed
+          ? "Dos rondas de tres partidas con personajes fijos, tres duelos de 2 puntos y una final a seis vidas de 6 / 2 / 0 puntos."
+          : "Tres rondas de tres partidas con personajes fijos. La partida final vale el doble."}
       </p>
       <div className="jornada-rounds">
         {[[1, 2, 3], [4, 5, 6], [7, 8, 9], [10]].map((games, i) => {
@@ -48,8 +57,20 @@ export default function JornadaOverview({
               key={i}
               className={`jornada-round ${games.includes(next) && !complete ? "current-round" : ""}`}
             >
-              <h3>{i === 3 ? "Ronda final" : `Ronda ${i + 1}`}</h3>
-              <small>{i === 3 ? "6 / 2 / 0 puntos" : "3 / 1 / 0 puntos"}</small>
+              <h3>
+                {i === 3
+                  ? "Ronda final · 6 vidas"
+                  : i === 2 && mixed
+                    ? "Ronda 3 · Duelos"
+                    : `Ronda ${i + 1}`}
+              </h3>
+              <small>
+                {i === 3
+                  ? "6 / 2 / 0 puntos"
+                  : i === 2 && mixed
+                    ? "2 puntos al ganador · 0 al perdedor"
+                    : "3 / 1 / 0 puntos"}
+              </small>
               <div className="jornada-slots">
                 {games.map((n) => {
                   const game = latest?.games.find((w) => w.jornada!.game === n);
@@ -65,17 +86,30 @@ export default function JornadaOverview({
                   );
                 })}
               </div>
+              {mixed && i === 2 && (
+                <div className="jornada-pairs">
+                  {games.map((n) => (
+                    <p key={n}>
+                      {duelPair(n)
+                        .map((id) => players.find((p) => p.id === id)?.name)
+                        .join(" vs ")}
+                    </p>
+                  ))}
+                </div>
+              )}
               {chars ? (
                 <div className="jornada-roster">
-                  {players.map((p) => (
-                    <div key={p.id}>
-                      <Portrait id={chars[p.id]} />
-                      <span>
-                        {p.name}
-                        <small>{fighterById.get(chars[p.id])?.name}</small>
-                      </span>
-                    </div>
-                  ))}
+                  {players
+                    .filter((p) => chars[p.id])
+                    .map((p) => (
+                      <div key={p.id}>
+                        <Portrait id={chars[p.id]!} />
+                        <span>
+                          {p.name}
+                          <small>{fighterById.get(chars[p.id]!)?.name}</small>
+                        </span>
+                      </div>
+                    ))}
                 </div>
               ) : (
                 <p className="muted">
@@ -101,11 +135,13 @@ export default function JornadaOverview({
           ))}
         </div>
       )}
-      <button className="primary" onClick={onRecord}>
-        {complete
-          ? "Empezar nueva jornada"
-          : `Registrar partida ${latest ? next : 1} de 10`}
-      </button>
+      {!readOnly && (
+        <button className="primary" onClick={onRecord}>
+          {complete
+            ? "Empezar nueva jornada"
+            : `Registrar partida ${latest ? next : 1} de 10`}
+        </button>
+      )}
     </section>
   );
 }

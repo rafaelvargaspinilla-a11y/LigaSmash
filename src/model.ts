@@ -36,6 +36,30 @@ export function fixedPlayerNames(current: Player[]): Player[] {
 }
 export type MatchCharacters = [string, string, string];
 export type Placements = [PlayerId, PlayerId, PlayerId];
+export interface Season {
+  id: string;
+  name: string;
+  closed: boolean;
+  format: "classic" | "mixed";
+}
+export const firstSeason: Season = {
+  id: "season-1",
+  name: "Temporada 1",
+  closed: false,
+  format: "classic",
+};
+export const sameSeason = (a: Season, b: Season) =>
+  a.id === b.id &&
+  a.name === b.name &&
+  a.closed === b.closed &&
+  a.format === b.format;
+export const seasonsOf = (b: Pick<Backup, "seasons">): Season[] =>
+  b.seasons ?? [{ ...firstSeason }];
+export const seasonOf = (w: Win) => w.seasonId ?? firstSeason.id;
+export const isJornadaDuel = (w: Pick<Win, "jornada">) =>
+  w.jornada?.format === "mixed" && w.jornada.game >= 7 && w.jornada.game <= 9;
+export const duelPair = (game: number): readonly PlayerId[] =>
+  game === 7 ? ["p1", "p2"] : game === 8 ? ["p1", "p3"] : ["p2", "p3"];
 export interface Win {
   id: string;
   playerId: PlayerId;
@@ -45,7 +69,8 @@ export interface Win {
   league?: "duel";
   opponentId?: PlayerId;
   opponentCharacterId?: string;
-  jornada?: { id: string; game: number };
+  seasonId?: string;
+  jornada?: { id: string; game: number; format?: "mixed" };
   placements?: Placements;
   characters?: MatchCharacters;
 }
@@ -54,7 +79,8 @@ export interface Preferences {
   favorites: string[];
 }
 export interface Backup {
-  schemaVersion: 1 | 2 | 3 | 4 | 5;
+  schemaVersion: 1 | 2 | 3 | 4 | 5 | 6;
+  seasons?: Season[];
   exportedAt: string;
   players: Player[];
   wins: Win[];
@@ -128,6 +154,7 @@ export function filterPeriod(wins: Win[], bounds: [string, string]): Win[] {
 }
 export function pointsFor(win: Win, player: PlayerId): number {
   if (win.league === "duel") return 0;
+  if (isJornadaDuel(win)) return win.playerId === player ? 2 : 0;
   const multiplier = win.jornada?.game === 10 ? 2 : 1;
   return (
     (win.playerId === player ? 3 : win.placements?.[1] === player ? 1 : 0) *
@@ -191,6 +218,8 @@ export function statistics(wins: Win[], players: Player[]) {
     .map((p) => ({
       ...p,
       wins: counts.get(p.id) ?? 0,
+      firsts: wins.filter((w) => w.playerId === p.id && !isJornadaDuel(w))
+        .length,
       points: points.get(p.id) ?? 0,
       seconds: seconds.get(p.id) ?? 0,
       thirds: thirds.get(p.id) ?? 0,
@@ -208,8 +237,9 @@ export function statistics(wins: Win[], players: Player[]) {
     ranking,
     leaders: max ? ranking.filter((p) => p.points === max) : [],
     victoryLeaders: maxWins ? ranking.filter((p) => p.wins === maxWins) : [],
-    incomplete: wins.filter((w) => !w.placements).length,
-    incompleteCharacters: wins.filter((w) => !w.characters).length,
+    incomplete: wins.filter((w) => !w.placements && !isJornadaDuel(w)).length,
+    incompleteCharacters: wins.filter((w) => !w.characters && !isJornadaDuel(w))
+      .length,
     characterPointsRanking: [
       ...wins.reduce((map, w) => {
         for (const entry of matchEntries(w))
@@ -264,19 +294,39 @@ export function validDate(value: unknown): value is string {
 export function validateBackup(input: unknown): Backup {
   const fail = () => {
     throw new Error(
-      "Copia no válida. Se requiere JSON de Smash Tracker con esquema 1 a 5 y datos correctos.",
+      "Copia no válida. Se requiere JSON de Smash Tracker con esquema 1 a 6 y datos correctos.",
     );
   };
   if (!input || typeof input !== "object") return fail();
   const b = input as Partial<Backup>;
   if (
-    ![1, 2, 3, 4, 5].includes(b.schemaVersion!) ||
+    ![1, 2, 3, 4, 5, 6].includes(b.schemaVersion!) ||
     !Array.isArray(b.players) ||
     b.players.length !== 3 ||
     !Array.isArray(b.wins) ||
     !Array.isArray(b.favorites) ||
     typeof b.exportedAt !== "string" ||
     !Number.isFinite(Date.parse(b.exportedAt))
+  )
+    return fail();
+  const seasons = b.schemaVersion === 6 ? b.seasons : [{ ...firstSeason }];
+  if (
+    !Array.isArray(seasons) ||
+    !seasons.length ||
+    seasons.filter((s) => s && !s.closed).length !== 1 ||
+    new Set(seasons.map((s) => s?.id)).size !== seasons.length ||
+    seasons.some(
+      (s) =>
+        !s ||
+        typeof s.id !== "string" ||
+        !/^[a-z0-9-]{1,80}$/.test(s.id) ||
+        typeof s.name !== "string" ||
+        !s.name.trim() ||
+        s.name.length > 60 ||
+        typeof s.closed !== "boolean" ||
+        !["classic", "mixed"].includes(s.format),
+    ) ||
+    !seasons.some((s) => s.id === firstSeason.id)
   )
     return fail();
   const ids = new Set<string>();
@@ -318,14 +368,22 @@ export function validateBackup(input: unknown): Backup {
           w.placements !== undefined ||
           w.characters !== undefined)) ||
       (w.league === undefined &&
+        !isJornadaDuel(w) &&
         (w.opponentId !== undefined || w.opponentCharacterId !== undefined)) ||
       typeof w.timestamp !== "string" ||
       !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(w.timestamp) ||
       !Number.isFinite(Date.parse(w.timestamp)) ||
       new Date(w.timestamp).toISOString() !== w.timestamp ||
       !validDate(w.localDate) ||
+      (w.seasonId !== undefined &&
+        (b.schemaVersion !== 6 ||
+          typeof w.seasonId !== "string" ||
+          w.league === "duel" ||
+          !seasons.some((s) => s.id === w.seasonId))) ||
+      (w.jornada?.format === "mixed" &&
+        seasons.find((s) => s.id === seasonOf(w))?.format !== "mixed") ||
       (w.jornada !== undefined &&
-        (b.schemaVersion !== 5 ||
+        (b.schemaVersion! < 5 ||
           !w.jornada ||
           typeof w.jornada.id !== "string" ||
           !/^[a-f0-9-]{36}$/.test(w.jornada.id) ||
@@ -333,8 +391,16 @@ export function validateBackup(input: unknown): Backup {
           w.jornada.game < 1 ||
           w.jornada.game > 10 ||
           w.league !== undefined ||
-          !w.placements ||
-          !w.characters)) ||
+          (w.jornada.format !== undefined &&
+            (w.jornada.format !== "mixed" || b.schemaVersion! < 6)) ||
+          (isJornadaDuel(w)
+            ? !duelPair(w.jornada.game).includes(w.playerId) ||
+              !duelPair(w.jornada.game).includes(w.opponentId!) ||
+              w.opponentId === w.playerId ||
+              !fighterById.has(w.opponentCharacterId!) ||
+              w.placements !== undefined ||
+              w.characters !== undefined
+            : !w.placements || !w.characters))) ||
       (w.placements !== undefined &&
         (b.schemaVersion === 1 ||
           !validPlacements(w.placements, w.playerId))) ||
@@ -346,15 +412,16 @@ export function validateBackup(input: unknown): Backup {
       return fail();
     ids.add(w.id);
     return {
-      ...(w.league === "duel"
+      ...(w.league === "duel" || isJornadaDuel(w)
         ? {
-            league: "duel" as const,
+            ...(w.league === "duel" ? { league: "duel" as const } : {}),
             opponentId: w.opponentId,
             ...(w.opponentCharacterId !== undefined
               ? { opponentCharacterId: w.opponentCharacterId }
               : {}),
           }
         : {}),
+      ...(w.seasonId ? { seasonId: w.seasonId } : {}),
       ...(w.jornada ? { jornada: { ...w.jornada } } : {}),
       id: w.id,
       playerId: w.playerId,
@@ -371,7 +438,13 @@ export function validateBackup(input: unknown): Backup {
   if (b.favorites.some((id) => typeof id !== "string" || !fighterById.has(id)))
     return fail();
   return {
-    schemaVersion: 5,
+    schemaVersion: 6,
+    seasons: seasons.map((s) => ({
+      id: s.id,
+      name: s.name.trim(),
+      closed: s.closed,
+      format: s.format,
+    })),
     exportedAt: b.exportedAt,
     players,
     wins,
@@ -384,6 +457,8 @@ export function sameResult(a: Win, b: Win) {
     a.league === b.league &&
     a.opponentId === b.opponentId &&
     a.opponentCharacterId === b.opponentCharacterId &&
+    seasonOf(a) === seasonOf(b) &&
+    a.jornada?.format === b.jornada?.format &&
     a.jornada?.id === b.jornada?.id &&
     a.jornada?.game === b.jornada?.game &&
     a.id === b.id &&
@@ -397,6 +472,23 @@ export function sameResult(a: Win, b: Win) {
 }
 
 export function matchEntries(win: Win) {
+  if (isJornadaDuel(win))
+    return [
+      {
+        playerId: win.playerId,
+        characterId: win.characterId,
+        position: 1,
+        points: 2,
+        duel: true,
+      },
+      {
+        playerId: win.opponentId!,
+        characterId: win.opponentCharacterId!,
+        position: 2,
+        points: 0,
+        duel: true,
+      },
+    ];
   if (!win.placements)
     return [
       {
@@ -404,6 +496,7 @@ export function matchEntries(win: Win) {
         characterId: win.characterId,
         position: 1,
         points: 3,
+        duel: false,
       },
     ];
   return win.placements.flatMap((playerId, index) => {
@@ -415,6 +508,7 @@ export function matchEntries(win: Win) {
             characterId,
             position: index + 1,
             points: pointsFor(win, playerId),
+            duel: false,
           },
         ]
       : [];
@@ -445,11 +539,14 @@ export function jornadas(wins: Win[]) {
 export function jornadaSlot(
   wins: Win[],
   newId: string,
-): { id: string; game: number } {
+): NonNullable<Win["jornada"]> {
   const last = jornadas(wins).at(-1);
   if (!last || last.games.length === 10) return { id: newId, game: 1 };
   return {
     id: last.id,
+    ...(last.games[0].jornada!.format
+      ? { format: last.games[0].jornada!.format }
+      : {}),
     game: Array.from({ length: 10 }, (_, i) => i + 1).find(
       (n) => !last.games.some((w) => w.jornada!.game === n),
     )!,
@@ -460,36 +557,52 @@ export function roundCharacters(
   jornada: { id: string; game: number },
   exceptId?: string,
 ) {
-  const first = wins.find(
-    (w) =>
+  const result: Partial<Record<PlayerId, string>> = {};
+  for (const w of wins)
+    if (
       w.id !== exceptId &&
       w.jornada?.id === jornada.id &&
-      roundOf(w.jornada.game) === roundOf(jornada.game),
-  );
-  if (!first) return undefined;
-  return Object.fromEntries(
-    first.placements!.map((p, i) => [p, first.characters![i]]),
-  ) as Record<PlayerId, string>;
+      roundOf(w.jornada.game) === roundOf(jornada.game)
+    ) {
+      for (const e of matchEntries(w)) result[e.playerId] = e.characterId;
+    }
+  return Object.keys(result).length ? result : undefined;
 }
 export function validateJornadas(wins: Win[]) {
-  const slots = new Set<string>();
-  const choices = new Map<string, string>();
+  const slots = new Set<string>(),
+    choices = new Map<string, string>(),
+    contexts = new Map<string, string>();
   for (const w of wins)
     if (w.jornada) {
+      const context = seasonOf(w) + ":" + (w.jornada.format ?? "classic");
+      if (contexts.has(w.jornada.id) && contexts.get(w.jornada.id) !== context)
+        throw new Error(
+          "Una jornada no puede cambiar de temporada ni de reglas.",
+        );
+      contexts.set(w.jornada.id, context);
       const slot = w.jornada.id + ":" + w.jornada.game;
       if (slots.has(slot))
         throw new Error(
           "Dos partidas ocupan el mismo puesto de una jornada. Revisa los cambios antes de sincronizar.",
         );
       slots.add(slot);
-      for (const [i, p] of w.placements!.entries()) {
-        const key = w.jornada.id + ":" + roundOf(w.jornada.game) + ":" + p;
-        const character = w.characters![i];
-        if (choices.has(key) && choices.get(key) !== character)
+      for (const e of matchEntries(w)) {
+        const key =
+          w.jornada.id + ":" + roundOf(w.jornada.game) + ":" + e.playerId;
+        if (choices.has(key) && choices.get(key) !== e.characterId)
           throw new Error(
             "Cada jugador debe mantener su personaje durante las tres partidas de la ronda.",
           );
-        choices.set(key, character);
+        choices.set(key, e.characterId);
       }
     }
+}
+export function assertSeasonOpen(seasons: Season[], win: Win) {
+  if (
+    win.league !== "duel" &&
+    !seasons.some((s) => s.id === seasonOf(win) && !s.closed)
+  )
+    throw new Error(
+      "Esta temporada está cerrada. Sus resultados se conservan sin cambios.",
+    );
 }

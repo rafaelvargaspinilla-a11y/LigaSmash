@@ -7,6 +7,7 @@ test("dos dispositivos: grupo privado, cambios offline, fusión y respuesta perd
   context,
   browser,
 }) => {
+  test.setTimeout(60000);
   const pg = new PGlite();
   await pg.exec("create role anon;create role authenticated;");
   await pg.exec(readFileSync(resolve("supabase/schema.sql"), "utf8"));
@@ -180,6 +181,58 @@ test("dos dispositivos: grupo privado, cambios offline, fusión y respuesta perd
           w.characters[0] === w.characterId,
       ),
     ).toBe(true);
+    await b
+      .getByRole("dialog")
+      .getByRole("button", { name: "Cerrar", exact: true })
+      .click();
+    await b
+      .getByRole("button", { name: "Nueva temporada", exact: true })
+      .click();
+    await b
+      .getByRole("dialog")
+      .getByRole("button", { name: "Cerrar y empezar temporada", exact: true })
+      .click();
+    await expect(total(page)).toHaveText("0", { timeout: 15000 });
+    for (let game = 1; game <= 6; game++) await add(b, "Rafa", "Mario");
+    for (let game = 7; game <= 9; game++) {
+      await b
+        .getByRole("button", { name: "Registrar partida", exact: true })
+        .click();
+      const form = b.getByRole("dialog", {
+        name: "Registrar duelo de jornada",
+      });
+      if (game === 7)
+        for (const fighter of ["Mario", "Link"]) {
+          await form.getByLabel("Buscar personaje").fill(fighter);
+          await form
+            .getByRole("button", { name: fighter, exact: true })
+            .click();
+        }
+      if (game === 8) {
+        await form.getByLabel("Buscar personaje").fill("Kirby");
+        await form.getByRole("button", { name: "Kirby", exact: true }).click();
+      }
+      await form
+        .getByRole("button", { name: "Registrar duelo", exact: true })
+        .click();
+      await expect(form).toBeHidden();
+    }
+    await expect(total(page)).toHaveText("9", { timeout: 15000 });
+    const mixed = (
+      await pg.query<{
+        d: {
+          wins: Array<{
+            jornada?: { format?: string };
+            opponentId?: string;
+            opponentCharacterId?: string;
+          }>;
+        };
+      }>("select public.smash_read_group($1)->'data' as d", [code])
+    ).rows[0].d.wins.filter(
+      (w) => w.jornada?.format === "mixed" && w.opponentId,
+    );
+    expect(mixed).toHaveLength(3);
+    expect(mixed.every((w) => !!w.opponentCharacterId)).toBe(true);
   } finally {
     await second.close();
     await pg.close();
