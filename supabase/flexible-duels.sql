@@ -1,0 +1,126 @@
+-- Free character choice and encounter order in the three jornada duels. Preserves all records.
+BEGIN;
+create or replace function public.smash_valid_data_v5(payload jsonb)
+returns boolean language plpgsql immutable set search_path = pg_catalog as $$
+declare item jsonb; allowed text[] := ARRAY['01','02','03','04','04e','05','06','07','08','09','10','11','12','13','13e','14','15','16','17','18','19','20','21','21e','22','23','24','25','25e','26','27','28','28e','29','30','31','32','33-35','36','37','38','39','40','41','42','43','44','45','46','47','48','49','50','51','52','53','54','55','56','57','58','59','60','60e','61','62','63','64','65','66','66e','67','68','69','70','71','72','73','74','75','76','77','78','79-80','81','82'];
+begin
+  if jsonb_typeof(payload) <> 'object' or (payload->'schemaVersion' is distinct from '1'::jsonb and payload->'schemaVersion' is distinct from '2'::jsonb and payload->'schemaVersion' is distinct from '3'::jsonb and payload->'schemaVersion' is distinct from '4'::jsonb and payload->'schemaVersion' is distinct from '5'::jsonb) then return false; end if;
+  if jsonb_typeof(payload->'players') is distinct from 'array' or jsonb_typeof(payload->'wins') is distinct from 'array' or jsonb_typeof(payload->'favorites') is distinct from 'array' then return false; end if;
+  if jsonb_array_length(payload->'players') <> 3 or jsonb_array_length(payload->'favorites') <> 0 or octet_length(payload::text) > 20971520 then return false; end if;
+  if (select count(distinct p->>'id') from jsonb_array_elements(payload->'players') p) <> 3 then return false; end if;
+  if jsonb_typeof(payload->'exportedAt') is distinct from 'string' then return false; end if;
+  perform (payload->>'exportedAt')::timestamptz;
+  for item in select value from jsonb_array_elements(payload->'players') loop
+    if jsonb_typeof(item) <> 'object' or (item->>'id' = any(array['p1','p2','p3'])) is distinct from true or jsonb_typeof(item->'name') is distinct from 'string' or length(btrim(item->>'name')) not between 1 and 40 then return false; end if;
+  end loop;
+  if (select count(distinct w->>'id') from jsonb_array_elements(payload->'wins') w) <> jsonb_array_length(payload->'wins') then return false; end if;
+  for item in select value from jsonb_array_elements(payload->'wins') loop
+    if jsonb_typeof(item) <> 'object' or jsonb_typeof(item->'id') is distinct from 'string' or length(item->>'id') not between 1 and 100 or (item->>'playerId'=any(array['p1','p2','p3'])) is distinct from true or (case when item->>'league'='duel' then ((item->'characterId'='""'::jsonb and not (item ? 'opponentCharacterId')) or (payload->'schemaVersion' in ('4'::jsonb,'5'::jsonb) and (item->>'characterId'=any(allowed)) and (item->>'opponentCharacterId'=any(allowed)))) else (item->>'characterId'=any(allowed)) end) is distinct from true then return false; end if;
+    if jsonb_typeof(item->'timestamp') is distinct from 'string' or not (item->>'timestamp' ~ '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$') then return false; end if;
+    if to_char((item->>'timestamp')::timestamptz at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') <> item->>'timestamp' then return false; end if;
+    if jsonb_typeof(item->'localDate') is distinct from 'string' or not (item->>'localDate' ~ '^\d{4}-\d{2}-\d{2}$') or item->>'localDate' < '1900-01-01' then return false; end if;
+    if ((item->>'localDate')::date)::text <> item->>'localDate' then return false; end if;
+    if item ? 'league' then
+      if item->'league' is distinct from '"duel"'::jsonb or (payload->'schemaVersion' is distinct from '3'::jsonb and payload->'schemaVersion' is distinct from '4'::jsonb and payload->'schemaVersion' is distinct from '5'::jsonb) or (item->>'opponentId'=any(array['p1','p2','p3'])) is distinct from true or item->>'opponentId'=item->>'playerId' or item ? 'placements' or item ? 'characters' then return false; end if;
+    elsif item ? 'opponentId' or item ? 'opponentCharacterId' then return false;
+    end if;
+    if item ? 'jornada' then
+      if payload->'schemaVersion' is distinct from '5'::jsonb or item ? 'league' or not (item ? 'placements') or not (item ? 'characters') or jsonb_typeof(item->'jornada') is distinct from 'object' then return false; end if;
+      if jsonb_typeof(item->'jornada'->'id') is distinct from 'string' or not (item->'jornada'->>'id' ~ '^[a-f0-9-]{36}$') or jsonb_typeof(item->'jornada'->'game') is distinct from 'number' or not (item->'jornada'->>'game' ~ '^(10|[1-9])$') then return false; end if;
+    end if;
+    if item ? 'placements' then
+      if payload->'schemaVersion' = '1'::jsonb or jsonb_typeof(item->'placements') is distinct from 'array' then return false; end if;
+      if jsonb_array_length(item->'placements')<>3 or item->'placements'->>0 is distinct from item->>'playerId' then return false; end if;
+      if (select count(distinct value) from jsonb_array_elements_text(item->'placements'))<>3 then return false; end if;
+      if exists(select 1 from jsonb_array_elements_text(item->'placements') p where p.value not in ('p1','p2','p3')) then return false; end if;
+      if exists(select 1 from jsonb_array_elements(item->'placements') p where jsonb_typeof(p.value)<>'string') then return false; end if;
+    end if;
+    if item ? 'characters' then
+      if payload->'schemaVersion'='1'::jsonb or not (item ? 'placements') or jsonb_typeof(item->'characters') is distinct from 'array' then return false; end if;
+      if jsonb_array_length(item->'characters')<>3 or item->'characters'->>0 is distinct from item->>'characterId' then return false; end if;
+      if exists(select 1 from jsonb_array_elements_text(item->'characters') c where c.value is null or not(c.value=any(allowed))) then return false; end if;
+      if exists(select 1 from jsonb_array_elements(item->'characters') c where jsonb_typeof(c.value)<>'string') then return false; end if;
+    end if;
+  end loop;
+  if exists(select 1 from jsonb_array_elements(payload->'wins') w where w ? 'jornada' group by w->'jornada'->>'id',w->'jornada'->>'game' having count(*)>1) then return false; end if;
+  if exists(
+    select 1 from jsonb_array_elements(payload->'wins') w
+    cross join lateral jsonb_array_elements_text(w->'placements') with ordinality p(player, n)
+    where w ? 'jornada'
+    group by w->'jornada'->>'id', least(4,ceil((w->'jornada'->>'game')::numeric/3)), p.player
+    having count(distinct w->'characters'->>((p.n-1)::int))>1
+  ) then return false; end if;
+  return true;
+exception when others then return false;
+end; $$;
+revoke all on function public.smash_valid_data_v5(jsonb) from public, anon, authenticated;
+
+create or replace function public.smash_valid_data(payload jsonb)
+returns boolean language plpgsql immutable set search_path = pg_catalog as $$
+declare s jsonb; w jsonb; j jsonb; normalized jsonb := '[]'::jsonb; entries jsonb := '[]'::jsonb; slots jsonb := '[]'::jsonb; pairs jsonb := '[]'::jsonb; pid text; sid text; fmt text; g int; i int; row jsonb; pair text[];
+begin
+ if octet_length(payload::text)>20971520 then return false; end if;
+ if payload->'schemaVersion' is distinct from '6'::jsonb then return public.smash_valid_data_v5(payload); end if;
+ if jsonb_typeof(payload->'seasons') is distinct from 'array' or jsonb_array_length(payload->'seasons')<1 then return false; end if;
+ if (select count(*) from jsonb_array_elements(payload->'seasons') x where x->'closed'='false'::jsonb)<>1 or (select count(distinct x->>'id') from jsonb_array_elements(payload->'seasons') x)<>jsonb_array_length(payload->'seasons') or not exists(select 1 from jsonb_array_elements(payload->'seasons') x where x->>'id'='season-1') then return false; end if;
+ for s in select value from jsonb_array_elements(payload->'seasons') loop
+  if jsonb_typeof(s)<>'object' or jsonb_typeof(s->'id') is distinct from 'string' or not (s->>'id' ~ '^[a-z0-9-]{1,80}$') or jsonb_typeof(s->'name') is distinct from 'string' or length(btrim(s->>'name')) not between 1 and 60 or jsonb_typeof(s->'closed') is distinct from 'boolean' or (s->>'format' in ('classic','mixed')) is distinct from true then return false; end if;
+ end loop;
+ if jsonb_typeof(payload->'wins') is distinct from 'array' then return false; end if;
+ for w in select value from jsonb_array_elements(payload->'wins') loop
+  sid:=coalesce(w->>'seasonId','season-1');
+  if w ? 'seasonId' and (w->>'league'='duel' or jsonb_typeof(w->'seasonId')<>'string') then return false; end if;
+  if w->>'league' is distinct from 'duel' and not exists(select 1 from jsonb_array_elements(payload->'seasons') x where x->>'id'=sid) then return false; end if;
+  row:=w-'jornada'-'seasonId';
+  if w ? 'jornada' then
+   j:=w->'jornada';fmt:=coalesce(j->>'format','classic');
+   if w ? 'league' or jsonb_typeof(j)<>'object' or jsonb_typeof(j->'id') is distinct from 'string' or not (j->>'id' ~ '^[a-f0-9-]{36}$') or jsonb_typeof(j->'game') is distinct from 'number' or not(j->>'game' ~ '^(10|[1-9])$') or (j ? 'format' and j->'format' is distinct from '"mixed"'::jsonb) then return false; end if;
+   g:=(j->>'game')::int;
+   if fmt='mixed' and not exists(select 1 from jsonb_array_elements(payload->'seasons') x where x->>'id'=sid and x->>'format'='mixed') then return false; end if;
+   slots:=slots || jsonb_build_array(jsonb_build_object('jid',j->>'id','game',g,'context',sid||':'||fmt));
+   if fmt='mixed' and g between 7 and 9 then
+    pair:=array['p1','p2','p3'];
+    if w ? 'placements' or w ? 'characters' or (w->>'playerId'=any(pair)) is distinct from true or (w->>'opponentId'=any(pair)) is distinct from true or w->>'playerId'=w->>'opponentId' or not(w ? 'opponentCharacterId') or w->>'characterId'='' then return false; end if;
+    row:=row || jsonb_build_object('league','duel');
+    pairs:=pairs || jsonb_build_array(jsonb_build_object('jid',j->>'id','pair',least(w->>'playerId',w->>'opponentId')||':'||greatest(w->>'playerId',w->>'opponentId')));
+   else
+    if jsonb_typeof(w->'placements') is distinct from 'array' or jsonb_typeof(w->'characters') is distinct from 'array' then return false; end if;
+    for i in 0..2 loop entries:=entries || jsonb_build_array(jsonb_build_object('jid',j->>'id','round',least(4,ceil(g::numeric/3)),'player',w->'placements'->>i,'character',w->'characters'->>i)); end loop;
+   end if;
+  end if;
+  normalized:=normalized || jsonb_build_array(row);
+ end loop;
+ if exists(select 1 from jsonb_array_elements(pairs) x group by x->>'jid',x->>'pair' having count(*)>1) then return false; end if;
+ if exists(select 1 from jsonb_array_elements(slots) x group by x->>'jid',x->>'game' having count(*)>1) or exists(select 1 from jsonb_array_elements(slots) x group by x->>'jid' having count(distinct x->>'context')>1) or exists(select 1 from jsonb_array_elements(entries) x group by x->>'jid',x->>'round',x->>'player' having count(distinct x->>'character')>1) then return false; end if;
+ return public.smash_valid_data_v5((payload-'seasons') || jsonb_build_object('schemaVersion',5,'wins',normalized));
+exception when others then return false;
+end; $$;
+revoke all on function public.smash_valid_data(jsonb) from public, anon, authenticated;
+
+create or replace function public.smash_write_group(group_code text, expected_revision bigint, new_data jsonb, batch_id uuid)
+returns jsonb language plpgsql security definer set search_path = pg_catalog as $$
+declare current_group public.smash_groups%rowtype; accepted boolean := false;
+begin
+  if group_code is null or group_code !~ '^[a-f0-9]{64}$' then raise exception 'Group unavailable' using errcode='42501'; end if;
+  if not public.smash_valid_data(new_data) then raise exception 'Invalid data'; end if;
+  select * into current_group from public.smash_groups where code_hash=sha256(convert_to(group_code,'UTF8')) for update;
+  if not found then raise exception 'Group unavailable' using errcode='42501'; end if;
+  if batch_id is null then raise exception 'Missing batch ID'; end if;
+  if exists(select 1 from public.smash_commits c where c.code_hash=current_group.code_hash and c.batch_id=smash_write_group.batch_id) then
+    accepted := true;
+  elsif current_group.revision=expected_revision then
+    if (current_group.data->>'schemaVersion')::int > (new_data->>'schemaVersion')::int then raise exception 'Client update required'; end if;
+    if current_group.data->'schemaVersion'='6'::jsonb then
+      if exists(select 1 from jsonb_array_elements(current_group.data->'seasons') old_s where not exists(select 1 from jsonb_array_elements(new_data->'seasons') new_s where new_s->>'id'=old_s->>'id' and new_s->>'name'=old_s->>'name' and new_s->>'format'=old_s->>'format' and (old_s->'closed'='false'::jsonb or new_s->'closed'='true'::jsonb))) then raise exception 'Season metadata conflict'; end if;
+      if exists(select 1 from jsonb_array_elements(current_group.data->'seasons') s where s->'closed'='true'::jsonb and
+       (select coalesce(jsonb_agg(w order by w->>'id'),'[]'::jsonb) from jsonb_array_elements(current_group.data->'wins') w where w->>'league' is distinct from 'duel' and coalesce(w->>'seasonId','season-1')=s->>'id') is distinct from
+       (select coalesce(jsonb_agg(w order by w->>'id'),'[]'::jsonb) from jsonb_array_elements(new_data->'wins') w where w->>'league' is distinct from 'duel' and coalesce(w->>'seasonId','season-1')=s->>'id')) then raise exception 'Season is closed'; end if;
+    end if;
+    update public.smash_groups set data=new_data,revision=revision+1,updated_at=now() where code_hash=current_group.code_hash returning * into current_group;
+    insert into public.smash_commits(code_hash,batch_id) values(current_group.code_hash,batch_id);
+    accepted := true;
+  end if;
+  return jsonb_build_object('accepted',accepted,'state',jsonb_build_object('revision',current_group.revision,'data',current_group.data));
+end; $$;
+
+COMMIT;

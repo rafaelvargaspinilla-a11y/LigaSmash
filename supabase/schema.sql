@@ -74,7 +74,7 @@ revoke all on function public.smash_valid_data_v5(jsonb) from public, anon, auth
 
 create or replace function public.smash_valid_data(payload jsonb)
 returns boolean language plpgsql immutable set search_path = pg_catalog as $$
-declare s jsonb; w jsonb; j jsonb; normalized jsonb := '[]'::jsonb; entries jsonb := '[]'::jsonb; slots jsonb := '[]'::jsonb; pid text; sid text; fmt text; g int; i int; row jsonb; pair text[];
+declare s jsonb; w jsonb; j jsonb; normalized jsonb := '[]'::jsonb; entries jsonb := '[]'::jsonb; slots jsonb := '[]'::jsonb; pairs jsonb := '[]'::jsonb; pid text; sid text; fmt text; g int; i int; row jsonb; pair text[];
 begin
  if octet_length(payload::text)>20971520 then return false; end if;
  if payload->'schemaVersion' is distinct from '6'::jsonb then return public.smash_valid_data_v5(payload); end if;
@@ -96,10 +96,10 @@ begin
    if fmt='mixed' and not exists(select 1 from jsonb_array_elements(payload->'seasons') x where x->>'id'=sid and x->>'format'='mixed') then return false; end if;
    slots:=slots || jsonb_build_array(jsonb_build_object('jid',j->>'id','game',g,'context',sid||':'||fmt));
    if fmt='mixed' and g between 7 and 9 then
-    pair:=case g when 7 then array['p1','p2'] when 8 then array['p1','p3'] else array['p2','p3'] end;
+    pair:=array['p1','p2','p3'];
     if w ? 'placements' or w ? 'characters' or (w->>'playerId'=any(pair)) is distinct from true or (w->>'opponentId'=any(pair)) is distinct from true or w->>'playerId'=w->>'opponentId' or not(w ? 'opponentCharacterId') or w->>'characterId'='' then return false; end if;
     row:=row || jsonb_build_object('league','duel');
-    entries:=entries || jsonb_build_array(jsonb_build_object('jid',j->>'id','round',3,'player',w->>'playerId','character',w->>'characterId'),jsonb_build_object('jid',j->>'id','round',3,'player',w->>'opponentId','character',w->>'opponentCharacterId'));
+    pairs:=pairs || jsonb_build_array(jsonb_build_object('jid',j->>'id','pair',least(w->>'playerId',w->>'opponentId')||':'||greatest(w->>'playerId',w->>'opponentId')));
    else
     if jsonb_typeof(w->'placements') is distinct from 'array' or jsonb_typeof(w->'characters') is distinct from 'array' then return false; end if;
     for i in 0..2 loop entries:=entries || jsonb_build_array(jsonb_build_object('jid',j->>'id','round',least(4,ceil(g::numeric/3)),'player',w->'placements'->>i,'character',w->'characters'->>i)); end loop;
@@ -107,6 +107,7 @@ begin
   end if;
   normalized:=normalized || jsonb_build_array(row);
  end loop;
+ if exists(select 1 from jsonb_array_elements(pairs) x group by x->>'jid',x->>'pair' having count(*)>1) then return false; end if;
  if exists(select 1 from jsonb_array_elements(slots) x group by x->>'jid',x->>'game' having count(*)>1) or exists(select 1 from jsonb_array_elements(slots) x group by x->>'jid' having count(distinct x->>'context')>1) or exists(select 1 from jsonb_array_elements(entries) x group by x->>'jid',x->>'round',x->>'player' having count(distinct x->>'character')>1) then return false; end if;
  return public.smash_valid_data_v5((payload-'seasons') || jsonb_build_object('schemaVersion',5,'wins',normalized));
 exception when others then return false;
