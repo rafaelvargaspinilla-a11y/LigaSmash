@@ -2,7 +2,6 @@ import {
   jornadas,
   pointsFor,
   roundCharacters,
-  duelPair,
   type Player,
   type Win,
 } from "./model";
@@ -49,9 +48,10 @@ export default function JornadaOverview({
       </p>
       <div className="jornada-rounds">
         {[[1, 2, 3], [4, 5, 6], [7, 8, 9], [10]].map((games, i) => {
-          const chars = latest
-            ? roundCharacters(latest.games, { id: latest.id, game: games[0] })
-            : undefined;
+          const chars =
+            latest && !(mixed && i === 2)
+              ? roundCharacters(latest.games, { id: latest.id, game: games[0] })
+              : undefined;
           return (
             <div
               key={i}
@@ -88,13 +88,31 @@ export default function JornadaOverview({
               </div>
               {mixed && i === 2 && (
                 <div className="jornada-pairs">
-                  {games.map((n) => (
-                    <p key={n}>
-                      {duelPair(n)
-                        .map((id) => players.find((p) => p.id === id)?.name)
-                        .join(" vs ")}
-                    </p>
-                  ))}
+                  {games.map((n) => {
+                    const duel = latest?.games.find(
+                      (w) => w.jornada?.game === n,
+                    );
+                    return (
+                      <p key={n}>
+                        {n}.{" "}
+                        {duel ? (
+                          <>
+                            {[duel.playerId, duel.opponentId!]
+                              .map(
+                                (id) => players.find((p) => p.id === id)?.name,
+                              )
+                              .join(" vs ")}
+                            <small>
+                              {fighterById.get(duel.characterId)?.name} /{" "}
+                              {fighterById.get(duel.opponentCharacterId!)?.name}
+                            </small>
+                          </>
+                        ) : (
+                          "Enfrentamiento a elegir"
+                        )}
+                      </p>
+                    );
+                  })}
                 </div>
               )}
               {chars ? (
@@ -113,9 +131,11 @@ export default function JornadaOverview({
                 </div>
               ) : (
                 <p className="muted">
-                  {i === 3
-                    ? "Nueva elección de personajes"
-                    : "Elegid personajes al empezar"}
+                  {mixed && i === 2
+                    ? "Orden y personajes libres en cada duelo"
+                    : i === 3
+                      ? "Nueva elección de personajes"
+                      : "Elegid personajes al empezar"}
                 </p>
               )}
             </div>

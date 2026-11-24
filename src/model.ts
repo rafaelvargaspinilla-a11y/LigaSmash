@@ -394,8 +394,7 @@ export function validateBackup(input: unknown): Backup {
           (w.jornada.format !== undefined &&
             (w.jornada.format !== "mixed" || b.schemaVersion! < 6)) ||
           (isJornadaDuel(w)
-            ? !duelPair(w.jornada.game).includes(w.playerId) ||
-              !duelPair(w.jornada.game).includes(w.opponentId!) ||
+            ? !playerIds.includes(w.opponentId!) ||
               w.opponentId === w.playerId ||
               !fighterById.has(w.opponentCharacterId!) ||
               w.placements !== undefined ||
@@ -570,6 +569,7 @@ export function roundCharacters(
 }
 export function validateJornadas(wins: Win[]) {
   const slots = new Set<string>(),
+    pairs = new Set<string>(),
     choices = new Map<string, string>(),
     contexts = new Map<string, string>();
   for (const w of wins)
@@ -586,6 +586,16 @@ export function validateJornadas(wins: Win[]) {
           "Dos partidas ocupan el mismo puesto de una jornada. Revisa los cambios antes de sincronizar.",
         );
       slots.add(slot);
+      if (isJornadaDuel(w)) {
+        const pair =
+          w.jornada.id + ":" + [w.playerId, w.opponentId!].sort().join(":");
+        if (pairs.has(pair))
+          throw new Error(
+            "Esta pareja ya ha jugado su duelo en esta jornada. Elige otro enfrentamiento.",
+          );
+        pairs.add(pair);
+        continue;
+      }
       for (const e of matchEntries(w)) {
         const key =
           w.jornada.id + ":" + roundOf(w.jornada.game) + ":" + e.playerId;
@@ -605,4 +615,22 @@ export function assertSeasonOpen(seasons: Season[], win: Win) {
     throw new Error(
       "Esta temporada está cerrada. Sus resultados se conservan sin cambios.",
     );
+}
+
+export function availableJornadaPairs(
+  wins: Win[],
+  jornadaId: string,
+  exceptId?: string,
+) {
+  return [duelPair(7), duelPair(8), duelPair(9)].filter(
+    (pair) =>
+      !wins.some(
+        (w) =>
+          w.id !== exceptId &&
+          w.jornada?.id === jornadaId &&
+          isJornadaDuel(w) &&
+          pair.includes(w.playerId) &&
+          pair.includes(w.opponentId!),
+      ),
+  );
 }

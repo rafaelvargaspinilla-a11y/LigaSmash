@@ -729,18 +729,22 @@ test("temporadas: resultado histórico, jornada mixta y duelos de dos puntos", a
       name: "Registrar duelo de jornada",
     });
     await expect(form).toContainText(`Partida ${game} de 10`);
-    if (game === 7) {
-      for (const fighter of ["Mario", "Link"]) {
-        await form.getByLabel("Buscar personaje").fill(fighter);
-        await form.getByRole("button", { name: fighter, exact: true }).click();
-      }
+    const encounter = form.getByRole("combobox", {
+      name: "Enfrentamiento",
+      exact: true,
+    });
+    await expect(encounter.locator("option")).toHaveCount(10 - game);
+    await encounter.selectOption(
+      game === 7 ? "p2:p3" : game === 8 ? "p1:p3" : "p1:p2",
+    );
+    for (const fighter of game === 7
+      ? ["Cloud", "Daisy"]
+      : game === 8
+        ? ["Sora", "Kirby"]
+        : ["Mario", "Link"]) {
+      await form.getByLabel("Buscar personaje").fill(fighter);
+      await form.getByRole("button", { name: fighter, exact: true }).click();
     }
-    if (game === 8) {
-      await form.getByLabel("Buscar personaje").fill("Kirby");
-      await form.getByRole("button", { name: "Kirby", exact: true }).click();
-    }
-    if (game === 9)
-      await expect(form.getByLabel("Buscar personaje")).toHaveCount(0);
     await form
       .getByRole("button", { name: "Registrar duelo", exact: true })
       .click();
@@ -794,7 +798,9 @@ test("temporadas: resultado histórico, jornada mixta y duelos de dos puntos", a
     .getByRole("button", { name: "Cerrar y empezar temporada", exact: true })
     .click();
   await expect(page.getByRole("dialog")).toBeHidden();
-  await expect(page.getByLabel("Temporada de La liga")).toContainText("Temporada 3");
+  await expect(page.getByLabel("Temporada de La liga")).toContainText(
+    "Temporada 3",
+  );
   await page.reload();
   await expect(page.getByLabel("Temporada de La liga")).toContainText(
     "Temporada 3",

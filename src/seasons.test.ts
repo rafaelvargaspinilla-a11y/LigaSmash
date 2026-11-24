@@ -4,6 +4,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { TrackerDB } from "./db";
 import {
   firstSeason,
+  availableJornadaPairs,
   validateBackup,
   makeWin,
   statistics,
@@ -17,6 +18,7 @@ import {
 import { applyChanges } from "./sync-model";
 import schema from "../supabase/schema.sql?raw";
 import upgrade from "../supabase/seasons.sql?raw";
+import flexible from "../supabase/flexible-duels.sql?raw";
 const season: Season = {
   id: "season-2",
   name: "Temporada 2",
@@ -81,11 +83,11 @@ it("conserva la temporada histórica y puntúa 38 puntos por jornada mixta", () 
   expect(pointsFor(wins[6], "p2")).toBe(0);
   expect(statistics(wins, data([]).players).incomplete).toBe(0);
   expect(() =>
-    validateBackup(data([{ ...duel(7), opponentId: "p3" }])),
+    validateBackup(data([{ ...duel(7), opponentId: "p1" }])),
   ).toThrow();
-  expect(() =>
-    validateBackup(data([duel(7), { ...duel(8), characterId: "02" }])),
-  ).toThrow();
+  expect(
+    validateBackup(data([duel(7), { ...duel(8), characterId: "02" }])).wins,
+  ).toHaveLength(2);
   expect(() =>
     validateBackup(data([{ ...trio(1), seasonId: "unknown" }])),
   ).toThrow();
@@ -164,6 +166,8 @@ it("PostgreSQL: migración repetible, jornadas mixtas y temporadas cerradas prot
     await pg.exec(schema);
     await pg.exec(upgrade);
     await pg.exec(upgrade);
+    await pg.exec(flexible);
+    await pg.exec(flexible);
     const valid = async (b: unknown) =>
       (
         await pg.query<{ ok: boolean }>(
@@ -179,9 +183,17 @@ it("PostgreSQL: migración repetible, jornadas mixtas y temporadas cerradas prot
       trio(10),
     ];
     expect(await valid(data(wins))).toBe(true);
-    expect(await valid(data([{ ...duel(7), opponentId: "p3" }]))).toBe(false);
+    expect(await valid(data([{ ...duel(7), opponentId: "p1" }]))).toBe(false);
     expect(
       await valid(data([duel(7), { ...duel(8), characterId: "02" }])),
+    ).toBe(true);
+    expect(
+      await valid(
+        data([
+          duel(7),
+          { ...duel(7, "p2"), jornada: { id: jid, game: 8, format: "mixed" } },
+        ]),
+      ),
     ).toBe(false);
     const old = makeWin("p1", "01");
     const code = "e".repeat(64);
@@ -212,3 +224,77 @@ it("PostgreSQL: migración repetible, jornadas mixtas y temporadas cerradas prot
     await pg.close();
   }
 }, 30000);
+
+it("permite cualquier orden y personajes distintos, impidiendo repetir una pareja", () => {
+  const wins = [
+    { ...duel(8), jornada: { id: jid, game: 7, format: "mixed" as const } },
+    { ...duel(9), jornada: { id: jid, game: 8, format: "mixed" as const } },
+    {
+      ...duel(7),
+      characterId: "02",
+      jornada: { id: jid, game: 9, format: "mixed" as const },
+    },
+  ];
+  expect(validateBackup(data(wins)).wins).toEqual(wins);
+  expect(availableJornadaPairs(wins, jid)).toHaveLength(0);
+  expect(availableJornadaPairs(wins, jid, wins[1].id)).toEqual([["p2", "p3"]]);
+  expect(() =>
+    validateBackup(
+      data([
+        duel(7),
+        { ...duel(7, "p2"), jornada: { id: jid, game: 8, format: "mixed" } },
+      ]),
+    ),
+  ).toThrow("pareja");
+  expect(() =>
+    applyChanges(data([duel(7)]), [
+      {
+        change: {
+          kind: "add",
+          win: {
+            ...duel(7, "p2"),
+            jornada: { id: jid, game: 9, format: "mixed" },
+          },
+        },
+      },
+    ]),
+  ).toThrow("pareja");
+});
+it("guarda y edita personajes libres en duelos sin relajar las dos primeras rondas", async () => {
+  const db = new TrackerDB(crypto.randomUUID(), true);
+  try {
+    await db.ensureFixedPlayers();
+    const s = await db.startSeason("Flexible");
+    const j = { id: crypto.randomUUID(), game: 7, format: "mixed" as const };
+    const a = await db.saveJornadaDuel("p1", "p3", ["01", "06"], j, s.id);
+    await db.saveJornadaDuel("p1", "p2", ["02", "03"], { ...j, game: 8 }, s.id);
+    await expect(
+      db.saveJornadaDuel("p3", "p1", ["06", "01"], { ...j, game: 9 }, s.id),
+    ).rejects.toThrow("pareja");
+    await db.saveJornadaDuel("p3", "p1", ["17", "16"], j, s.id, a.id);
+    expect((await db.wins.get(a.id))?.characterId).toBe("17");
+    expect(validateBackup(await db.exportBackup()).wins).toHaveLength(2);
+    const first = await db.addWin(
+      "p1",
+      "01",
+      new Date(),
+      ["p1", "p2", "p3"],
+      ["01", "03", "06"],
+      { ...j, game: 1 },
+      s.id,
+    );
+    await expect(
+      db.addWin(
+        "p1",
+        "02",
+        new Date(),
+        first.placements,
+        ["02", "03", "06"],
+        { ...j, game: 2 },
+        s.id,
+      ),
+    ).rejects.toThrow("mantener");
+  } finally {
+    await db.delete();
+  }
+});

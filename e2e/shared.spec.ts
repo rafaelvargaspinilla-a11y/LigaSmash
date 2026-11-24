@@ -201,16 +201,21 @@ test("dos dispositivos: grupo privado, cambios offline, fusión y respuesta perd
       const form = b.getByRole("dialog", {
         name: "Registrar duelo de jornada",
       });
-      if (game === 7)
-        for (const fighter of ["Mario", "Link"]) {
-          await form.getByLabel("Buscar personaje").fill(fighter);
-          await form
-            .getByRole("button", { name: fighter, exact: true })
-            .click();
-        }
-      if (game === 8) {
-        await form.getByLabel("Buscar personaje").fill("Kirby");
-        await form.getByRole("button", { name: "Kirby", exact: true }).click();
+      const encounter = form.getByRole("combobox", {
+        name: "Enfrentamiento",
+        exact: true,
+      });
+      await expect(encounter.locator("option")).toHaveCount(10 - game);
+      await encounter.selectOption(
+        game === 7 ? "p2:p3" : game === 8 ? "p1:p3" : "p1:p2",
+      );
+      for (const fighter of game === 7
+        ? ["Cloud", "Daisy"]
+        : game === 8
+          ? ["Sora", "Kirby"]
+          : ["Mario", "Link"]) {
+        await form.getByLabel("Buscar personaje").fill(fighter);
+        await form.getByRole("button", { name: fighter, exact: true }).click();
       }
       await form
         .getByRole("button", { name: "Registrar duelo", exact: true })

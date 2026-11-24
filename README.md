@@ -132,7 +132,7 @@ Las nuevas temporadas usan diez partidas por jornada:
 
 - Ronda 1: partidas 1–3, todos contra todos, 3/1/0 puntos, personajes fijos.
 - Ronda 2: partidas 4–6, mismo sistema, con nueva elección de personajes.
-- Ronda 3: tres duelos, uno por pareja; 2 puntos al ganador y 0 al perdedor. Cada jugador mantiene su personaje en sus dos duelos de la ronda. Los duelos cuentan en La liga, separados de la liga 1vs1 independiente.
+- Ronda 3: tres duelos, uno por pareja; 2 puntos al ganador y 0 al perdedor. El orden de los enfrentamientos es libre y cada jugador puede elegir un personaje diferente en cada duelo. Cada pareja juega una sola vez por jornada. Los duelos cuentan en La liga, separados de la liga 1vs1 independiente.
 - Final: partida 10, todos contra todos a seis vidas, nueva elección de personajes y 6/2/0 puntos.
 
 Se reparten 38 puntos por jornada mixta. Las jornadas históricas siguen repartiendo sus 44 puntos con las reglas anteriores. El número de temporadas y jornadas no está fijado; se mantiene el límite de tamaño del grupo compartido.
@@ -140,3 +140,6 @@ Se reparten 38 puntos por jornada mixta. Las jornadas históricas siguen reparti
 Las copias usan el esquema 6 e incluyen temporadas y reglas de cada jornada. La importación conserva las temporadas actuales y rechaza conflictos; una copia completa se puede restaurar en una base vacía. El cierre se sincroniza con comprobación de los resultados conocidos: si otro dispositivo añade partidas antes de cerrar, se muestra un conflicto para revisar la clasificación. Los resultados de una temporada cerrada se protegen tanto en IndexedDB como en Supabase.
 
 Antes de publicar este cliente, ejecuta **`supabase/seasons.sql`** en Supabase SQL Editor. Es una actualización transaccional y repetible de funciones `smash_*`, compatible con los datos anteriores; no borra partidas, grupos ni códigos. No repitas migraciones antiguas después de esta actualización.
+
+
+Para habilitar el orden y los personajes libres de la tercera ronda en un proyecto existente, ejecuta `supabase/flexible-duels.sql` antes de publicar este cliente. Mantiene el esquema 6 y todos los datos actuales. El formulario ofrece solo las parejas pendientes y permite elegir los dos personajes en cada duelo, también al editar; las dos primeras rondas conservan sus personajes fijos y las temporadas cerradas permanecen protegidas.
