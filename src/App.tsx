@@ -478,29 +478,6 @@ export default function App() {
               </button>
             )}
           </div>
-          {(page === "home" ||
-            (page === "stats" && statsLeague === "trio") ||
-            (page === "characters" && charactersLeague === "trio") ||
-            (page === "history" && historyLeague === "trio")) && (
-            <SeasonControls
-              key={syncState.databaseName}
-              seasons={seasons}
-              selected={selectedSeason}
-              onSelect={(id) => {
-                setSelectedSeasonId(id);
-                setEditing(undefined);
-                setShowWin(false);
-              }}
-              onCreated={(s) => {
-                setSelectedSeasonId(s.id);
-                setEditing(undefined);
-                setShowWin(false);
-                notify(
-                  "Nueva temporada iniciada. La clasificación empieza de cero.",
-                );
-              }}
-            />
-          )}
           {page === "stats" && (
             <div
               className="league-filter"
@@ -1038,6 +1015,29 @@ export default function App() {
               wins={allWins}
               onChange={notify}
               databaseName={syncState.databaseName}
+            />
+          )}
+          {(page === "home" ||
+            (page === "stats" && statsLeague === "trio") ||
+            (page === "characters" && charactersLeague === "trio") ||
+            (page === "history" && historyLeague === "trio")) && (
+            <SeasonControls
+              key={syncState.databaseName}
+              seasons={seasons}
+              selected={selectedSeason}
+              onSelect={(id) => {
+                setSelectedSeasonId(id);
+                setEditing(undefined);
+                setShowWin(false);
+              }}
+              onCreated={(s) => {
+                setSelectedSeasonId(s.id);
+                setEditing(undefined);
+                setShowWin(false);
+                notify(
+                  "Nueva temporada iniciada. La clasificación empieza de cero.",
+                );
+              }}
             />
           )}
           <footer className="page-footer">
